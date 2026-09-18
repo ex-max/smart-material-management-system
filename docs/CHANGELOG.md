@@ -34,3 +34,11 @@
 - **原因**：用户评审通过并明确采纳建议。
 - **验证**：`make verify` 绿（4 项 skip）；本次一并把 M1-b 提交推送到 `origin/main`。
 - **回滚**：`git revert <本次提交>`，或撤回远程提交。
+
+## 2026-09-18 · 后端骨架 + 组织与权限/登录（M1-c）
+
+- **改动**：新增 `backend/` 可运行工程 —— FastAPI 分层骨架（api/service/repository/model/schema/core）、统一响应 `{code,message,data,trace_id}` 与业务错误码分段、全局异常处理、请求 trace_id 中间件；JWT 登录（`/api/v1/auth/login|me`）与 `require_perm` 接口级 RBAC；用户 CRUD + 角色/权限查询；ORM 六张表（users/roles/permissions/user_role/role_permission/operation_log）；Alembic 迁移 `0001_init_org_auth`；`scripts/seed.py` 幂等初始化 RBAC 与管理员；`backend/README.md` 与 `.env.example`；pytest 8 条（含权限拒绝路径）。
+- **依赖**：ADR-0001 已选 FastAPI/SQLAlchemy/Alembic/Pydantic/JWT；本次引入具体实现库：`psycopg[binary]`（PG 驱动）、`pydantic-settings`（.env 配置）、`PyJWT`（签令牌）、`bcrypt`（口令哈希）、`pytest/httpx/ruff`（测试与 lint）。**未引入任何 ADR 之外的框架**。
+- **验证**：`make verify` 绿 —— ruff 通过；`pytest 8 passed`；`alembic upgrade head --sql` 渲染 171 行（真检查，不再是 skip）。
+- **回滚**：`git revert <本次提交>`（删除新增文件即可，无数据/迁移副作用）。
+- **备注**：本机无 PostgreSQL，测试用 SQLite 内存库；PG 实例与 `jsonb`/`postgresql_where` 行为待 `deploy/` 起独立实例后验证（已记入 progress 已知坑）。
