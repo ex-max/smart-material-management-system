@@ -50,3 +50,18 @@
 - **验证**：`make verify` 绿 —— ruff 通过；`pytest 12 passed`（含树形分类、唯一冲突 409、外键校验 400、软删后 404、viewer 403）；`alembic upgrade head --sql` 渲染 352 行。
 - **回滚**：`git revert <本次提交>`（无数据迁移；若已建表，alembic downgrade 到 `0001_init_org_auth`）。
 - **备注**：分类树深拷贝约束（同父下 code 唯一）在服务层与库层双重保证；未实现分页筛选与操作日志写入。
+
+## 2026-09-18 · 采购单据 + 状态机（M2-a）
+
+- **改动**：
+  - 新增 `backend/app/core/state_machine.py`：全局 6 态（DRAFT/PENDING/APPROVED/IN_PROGRESS/COMPLETED/CANCELLED）与 7 类单据的迁移边（动作/来源态/目标态/权限码/标签），仅请购单有审批边；`apply_transition()` 是唯一写 `status` 的入口。
+  - 新增 `backend/app/core/errors.py` 采购段错误码：`E_PURCHASE_STATE=30001`、`E_PURCHASE_NOT_EDITABLE=30002` 及 `InvalidState`/`NotEditable`。
+  - 新增采购 6 张表 ORM（`backend/app/model/purchase.py`）：`purchase_requisition`/`pr_item`、`purchase_order`/`po_item`、`supplier_delivery`/`supplier_delivery_item`；含 CHECK、唯一/外键索引、物资快照与来源链 `po_item.source_pr_item_id`。
+  - 新增迁移 `0003_procurement`（含完整 downgrade）。
+  - 新增 `repository`/`schema`/`service`/`api`：单号 PR/PO/RCV-YYYYMMDD-####（当天最大流水 +1）；请购单 CRUD + 提交/审批（`purchase:approve`）/作废/转采购订单；采购订单 CRUD + 确认/作废；到货单 CRUD + 提交/作废（按订单行累计到货校验，批次物资必填批次号、保质期物资必填到期日）。
+  - 新增 `scripts/check_invariants.py`（`make verify` 第 6 项转为真检查）与 `tests/test_state_machine.py`、`tests/test_purchase.py`。
+- **原因**：progress 的“下一步” M2-a —— 落地 `docs/db-schema.md` §4 采购组与 §1.6 状态机；到货→入库→`inventory_transaction` 联动按计划留 M2-b。
+- **验证**：`make verify` 绿 —— ruff 通过；`pytest 26 passed`（状态流、权限拒绝 403、非法迁移 409/30001、非草稿不可改 409/30002、超量到货 400、批次校验、单号流水）；`alembic upgrade head --sql` 608 行；`downgrade 0003:0002 --sql` 可渲染；OpenAPI 34 paths。
+- **回滚**：`git revert <本次提交>`；若已建表，`alembic downgrade 0002_master_data`。
+- **备注**：本机无 PostgreSQL，迁移为人工编写（无法 autogenerate）并逐项核对 ORM；PG 专有行为待真库验证。
+

@@ -11,6 +11,10 @@ E_CONFLICT = 10409
 E_VALIDATION = 10422
 E_INTERNAL = 10500
 
+# 3xxxx 采购
+E_PURCHASE_STATE = 30001
+E_PURCHASE_NOT_EDITABLE = 30002
+
 
 class BizError(Exception):
     """业务异常：HTTP 状态码只表达协议层语义，业务结果看 code。"""
@@ -46,3 +50,17 @@ class Conflict(BizError):
 class BadRequest(BizError):
     def __init__(self, message: str = "请求不合法") -> None:
         super().__init__(E_BAD_REQUEST, message, 400)
+
+
+class InvalidState(BizError):
+    """单据状态迁移不合法。"""
+
+    def __init__(self, message: str = "单据状态不允许该操作") -> None:
+        super().__init__(E_PURCHASE_STATE, message, 409)
+
+
+class NotEditable(BizError):
+    """单据在当前状态下不允许修改。"""
+
+    def __init__(self, message: str = "单据在当前状态下不可修改") -> None:
+        super().__init__(E_PURCHASE_NOT_EDITABLE, message, 409)

@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：M1 完成（系统设计 + 后端骨架 + 权限/登录 + 主数据）。下一步进入 **M2 采购模块**
+- **里程碑**：M2 进行中 —— **M2-a 采购单据 + 状态机已完成**；下一步 M2-b 到货验收→入库→库存流水
 - **更新时间**：2026-09-18
 
 ## 已完成
@@ -17,6 +17,7 @@
 - [x] **M1-c 后端骨架 + 组织与权限/登录**：统一响应/错误码/trace_id、JWT 登录、`require_perm` RBAC、用户 CRUD、迁移 `0001_init_org_auth`（6 表）、`scripts/seed.py`
 - [x] **M1-d 主数据模块**：§3 六张表 ORM + 迁移 `0002_master_data` + CRUD API + 测试
   （`material-categories` 树形分类含 level/path、`units`、`materials`、`warehouses`、`locations`、`suppliers`；统一用 `material:view/material:manage` 鉴权；软删；编码冲突 409、外键校验 400）
+- [x] **M2-a 采购单据 + 状态机**：`core/state_machine.py`（全局 6 态 + 7 类单据迁移边 + 权限码，仅请购单审批）、采购 6 表 ORM + 迁移 `0003_procurement`、单据号 `PR/PO/RCV-YYYYMMDD-####`、请购单 CRUD+提交+审批（`purchase:approve`）+作废+转采购订单、采购订单 CRUD+确认+作废、到货单 CRUD+提交+作废（到货累计校验、批次/保质期校验）、`scripts/check_invariants.py` 与 26 条测试
 
 ## 进行中
 
@@ -24,11 +25,12 @@
 
 ## 下一步（只做这一条）
 
-**M2-a：采购单据 + 状态机（后端）** —— 实现 `docs/db-schema.md` §4 采购组：
-新增 `core/state_machine.py`（全局 6 态 + 仅请购单单级审批，单一事实来源），
-落地 `purchase_requisition`/`pr_item`、`purchase_order`/`po_item`/`supplier_delivery`(_item) 的 ORM/迁移/CRUD，
-实现"请购单 → 提交 → 审批（`purchase:approve`）→ 转采购订单"、单据号生成（PR/PO-YYYYMMDD-####）、
-状态迁移校验与权限拒绝测试。**到货验收 → 入库 → 写 `inventory_transaction` 的联动放 M2-b。**
+**M2-b：到货验收 → 入库 → 库存流水（后端）** —— 落地 `docs/db-schema.md` §5 库存作业组：
+新增 `inventory`（物资×仓库汇总）、`inventory_batch`（批次明细）、`inventory_transaction`（唯一真值源）ORM/迁移，
+实现到货单 `PENDING→APPROVED`（验收）/ `→COMPLETED`（已入库）与入库单 `DRAFT→IN_PROGRESS→COMPLETED` 过账：
+`SELECT ... FOR UPDATE` 锁结存行 → 同事务写 `inventory_transaction` → 更新 `inventory`/`inventory_batch` →
+回写 `po_item.received_qty` 与采购订单到货状态；作废走反向（红冲）流水。补库存对账测试
+（流水汇总 == 结存）并扩展 `scripts/check_invariants.py` 的库存检查；更新 progress 对账状态。
 
 ## 已知坑 / 未决问题
 
@@ -36,7 +38,9 @@
 |---|---|---|
 | 运行库实例 | 本机**没有 PostgreSQL**；测试用 SQLite 内存库，目标库仍是 PG。PG 专有行为（jsonb、部分唯一索引 `postgresql_where`、`COALESCE` 表达式唯一索引）待真库验证 | 待办（deploy/ 起独立实例，建议 127.0.0.1:5433） |
 | 本机 Python 环境 | 系统缺 `python3-venv`，venv 用 `--without-pip` + get-pip 引导 | 已解决（backend/README.md） |
-| 单据状态机 | 设计已冻结（全局 6 态 + 仅请购单审批）；`core/state_machine.py` **尚未创建** | M2-a 实现 |
+| 单据状态机 | 已实现：`core/state_machine.py` 单一事实来源（全局 6 态 + 7 类单据迁移边 + 权限码；仅请购单审批）；`apply_transition` 为唯一写 status 入口 | M2-a 完成 |
+| 到货→入库联动 | 到货单/到货行可登记与提交，但"验收通过→生成入库单→写库存流水"未实现 | M2-b 实现 |
+| 领域不变量脚本 | `scripts/check_invariants.py` 已创建（状态机结构 + 权限码 + service 不直改 status） | M2-a 完成，M2-b 扩展库存对账 |
 | 操作日志写入 | `operation_log` 表已建，中间件写日志逻辑未实现 | 待后续切片 |
 | 库存余额一致性 | `inventory` = 物资×仓库汇总、`inventory_batch` = 批次明细、`inventory_transaction` 为唯一真值源 | 设计已冻结，M2 实现并跑对账 |
 | 表数口径 | 全库 **41 张**（§2），方案写"约 36" | 已确认（采纳建议） |
@@ -52,3 +56,4 @@
 |---|---|---|
 | 2026-09-18 | M1-a 库存表设计口径：批次结存 = 物资×仓库×批次（`inventory_batch`）；汇总结存 = 物资×仓库（`inventory`） | 设计已冻结；库存模块未实现，无可跑数据 |
 | 2026-09-18 | M1-b 对账 SQL 口径：`docs/db-schema.md` §14 四条检查 | 设计已冻结；M2 实现过账后执行 |
+| 2026-09-18 | M2-a 采购单据（PR/PO/RCV）未写 `inventory` / `inventory_transaction`；到货→入库→流水联动在 M2-b | 不涉及库存过账，无对账数据；口径不变 |
