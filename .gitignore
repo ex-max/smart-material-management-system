@@ -1,0 +1,16 @@
+# 数据与产物（不进仓库）
+data/
+*.csv
+*.parquet
+ml/results/
+__pycache__/
+*.pyc
+.venv/
+backend/.venv/
+node_modules/
+frontend/dist/
+.env
+*.log
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
