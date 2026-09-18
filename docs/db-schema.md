@@ -788,15 +788,17 @@ flowchart LR
 
 ---
 
-## 9. 待确认 / 开放问题（评审时逐条拍板）
+## 9. 开放问题与已定结论（评审通过：全部采纳建议）
 
-| # | 问题 | 现状 / 建议 |
+| # | 问题 | 结论（已采纳，实现按此） |
 |---|---|---|
-| Q1 | 组织与权限组表名用 users 还是 user | 建议 users（PostgreSQL 保留字 + 复数约定） |
-| Q2 | 非批次物资的默认批次 | 建议 batch_no='__DEFAULT__' + is_default，使 batch_id 非空（见 5.9） |
-| Q3 | 部门主数据 | 方案无 dept 表，暂用 dept_name 文本；若要做部门主数据需在组织组加表 |
-| Q4 | 单号流水生成 | 暂用“计数 + 冲突重试”，不建序列表；QPS 高再评估 |
-| Q5 | 主键类型 | 暂定 bigint identity；若要 UUID（分布式/安全）需 ADR |
-| Q6 | 库位是否强制 | 暂可空（按仓库记账）；若要强制，收紧出入库行 location_id 为 NOT NULL |
-| Q7 | 盘点是否允许部分过账 | 暂定“整单过账”（COMPLETED 时统一处理） |
-| Q8 | 出库成本口径 | 本系统不含财务成本核算，unit_price/amount 仅占位（方案范围声明） |
+| Q1 | 组织与权限组表名用 users 还是 user | users（PostgreSQL 保留字 + 复数约定）；M1-b 按此建表 |
+| Q2 | 非批次物资的默认批次 | batch_no='__DEFAULT__' + is_default=true，batch_id 保持 NOT NULL（见 5.9） |
+| Q3 | 部门主数据 | 暂用 dept_name 文本；若要做部门主数据需在组织组加表并记 ADR |
+| Q4 | 单号流水生成 | “计数 + 冲突重试”，不建序列表；唯一约束兜底 |
+| Q5 | 主键类型 | bigint identity；改用 UUID 需 ADR |
+| Q6 | 库位是否强制 | 可空（按仓库记账）；若要强制，收紧出入库行 location_id 为 NOT NULL |
+| Q7 | 盘点是否允许部分过账 | 整单过账（COMPLETED 时统一处理） |
+| Q8 | 出库成本口径 | 不含财务成本核算，unit_price/amount 仅占位（方案范围声明） |
+
+> 结论已同步到 docs/progress.md 的“已知坑 / 未决问题”（状态：已确认 · 采纳建议）。

@@ -26,7 +26,7 @@
 **组织与权限（6）+ 台账与统计（5）+ 预测与决策（6）+ 系统（3）= 20 张表**：
 `inventory` / `inventory_transaction` 的字段与粒度（material×warehouse×batch_id）
 必须与 `docs/db-schema.md` 第 8 节"接口契约"一致，并写明"流水汇总 == 结存"的对账 SQL 口径；
-同时消化 §9 的开放问题（Q1 users 命名、Q2 非批次默认批次、Q3 部门主数据等）。
+§9 开放问题 Q1–Q8 已全部拍板（采纳建议），按结论实现即可；本会话无遗留待决项。
 
 ## 已知坑 / 未决问题
 
@@ -34,10 +34,10 @@
 |---|---|---|
 | 库存余额一致性 | 设计口径已定：结存粒度 = 物资×仓库×批次；非批次物资用系统默认批次；余额只由流水推导 + 同事务更新 + 对账任务。见 `docs/db-schema.md` §5.9 / §7 | 设计已冻结，M2 实现并跑对账 |
 | 单据状态机 | 设计已定：全局 6 态（DRAFT/PENDING/APPROVED/IN_PROGRESS/COMPLETED/CANCELLED），仅请购单有审批（单级），迁移集中在 `core/state_machine.py`。见 `docs/db-schema.md` §1.6 | 设计已冻结，M2 实现 |
-| 表数口径 | 方案写"约 36"，按其示例相加为 39；本次到货/调拨拆头行后全库预计 41。若页码预算吃紧，优先砍系统组而非业务表。见 `docs/db-schema.md` §0.3 | 待评审确认 |
-| 非批次物资默认批次 | 建议 `batch_no='__DEFAULT__'` + `is_default`，使 batch_id 非空、唯一约束与对账口径统一；若改可空需 COALESCE 表达式索引 | 待评审确认（Q2） |
-| users 表命名 | 组织与权限组建 `users` 而非 `user`（PostgreSQL 保留字 + 复数约定） | 待 M1-b 确认（Q1） |
-| 部门主数据 | 方案无 dept 表，暂用 `dept_name` 文本字段 | 待定（Q3） |
+| 表数口径 | 方案写"约 36"，按其示例相加为 39；本次到货/调拨拆头行后全库预计 41。若页码预算吃紧，优先砍系统组而非业务表。见 `docs/db-schema.md` §0.3 | 已确认（采纳建议：维持 21/41；页码吃紧再评估砍系统组） |
+| 非批次物资默认批次 | 建议 `batch_no='__DEFAULT__'` + `is_default`，使 batch_id 非空、唯一约束与对账口径统一；若改可空需 COALESCE 表达式索引 | 已确认（Q2，采纳建议） |
+| users 表命名 | 组织与权限组建 `users` 而非 `user`（PostgreSQL 保留字 + 复数约定） | 已确认（Q1，采纳建议） |
+| 部门主数据 | 方案无 dept 表，暂用 `dept_name` 文本字段 | 已确认（Q3，暂用 dept_name 文本） |
 | 预测与业务的边界 | ML 只读业务库、只写 `forecast_*` 与建议表 | 已写入 AGENTS.md |
 | 数据生成器参数 | Bernoulli–Gamma / 对数正态提前期等参数待冻结 | M3 前定稿 |
 | 服务水平定义 | CSL 还是 Fill Rate？**全程必须一致** | M5 前定稿 |

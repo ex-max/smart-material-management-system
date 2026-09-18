@@ -31,7 +31,8 @@ make serve      # 本地起后端
 2. `docs/progress.md` 更新（已完成 / 进行中 / 下一步 / 已知坑）
 3. `docs/CHANGELOG.md` 追加一条（改动 / 原因 / 验证 / 回滚）
 4. `git commit`（Conventional Commits：`feat(采购): …` / `fix(库存): …` / `docs: …`）
-5. 会话结束时项目必须**可运行**：迁移能升、服务能起、测试能过
+5. **同步远程**：`git push origin main` —— 每个会话收尾都要推送到 GitHub（地址见第七节）
+6. 会话结束时项目必须**可运行**：迁移能升、服务能起、测试能过
 
 ## 四、硬规则
 
@@ -57,3 +58,12 @@ make serve      # 本地起后端
 - `erp-conventions`：命名/分层/错误码/事务与锁/提交规范
 - `erp-db-migration`：Alembic 流程 + 库存余额对账 checklist
 - `forecast-experiment`：滚动回测协议 + 结果落盘 + 表格模板
+
+## 七、远程仓库与同步（每个会话收尾必做）
+
+- **远程仓库**：`origin` → https://github.com/ex-max/smart-material-management-system
+- **默认分支**：`main`（本地与远程保持一致）
+- **收尾顺序**：`make verify` 绿 → 更新 `docs/progress.md` 与 `docs/CHANGELOG.md` → `git commit` → **`git push origin main`**。
+- 推送前确认没有把密钥/token/`.env`/`data/`/`ml/results/` 带进提交（`make verify` 第 2 项会查）。
+- **推送失败不许静默跳过**：无凭据或网络不可用时，在会话结束说明中写明“本地已提交、未推送 + 原因”，并给出恢复命令。
+- 凭据只放本机（SSH key 或 git credential helper），**不得写入仓库**。
