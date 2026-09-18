@@ -1,11 +1,5 @@
 import re
 
-import pytest
-
-from app.core.permissions import Perm
-from app.core.security import hash_password
-from app.model.user import Permission, Role, RolePermission, User, UserRole
-
 
 def _login(client, username, password):
     resp = client.post("/api/v1/auth/login", json={"username": username, "password": password})
@@ -16,79 +10,6 @@ def _login(client, username, password):
 def _url(base, item_id, action=None):
     url = base + "/" + str(item_id)
     return url + "/" + action if action else url
-
-
-@pytest.fixture()
-def purchase_users(db_session, seeded):
-    """三个采购角色：只读、可管、可审批（admin 是 superuser，不走这里）。"""
-    db_session.add_all(
-        [
-            Permission(code=Perm.PURCHASE_VIEW, name="查看采购", type="API", sort_no=40),
-            Permission(code=Perm.PURCHASE_APPROVE, name="审批采购", type="API", sort_no=41),
-            Permission(code=Perm.PURCHASE_MANAGE, name="管理采购", type="API", sort_no=42),
-        ]
-    )
-    db_session.flush()
-    perms = {p.code: p for p in db_session.query(Permission).all()}
-
-    viewer_role = Role(code="P_VIEW", name="采购查看")
-    buyer_role = Role(code="P_BUYER", name="采购员")
-    approver_role = Role(code="P_APPROVER", name="采购审批")
-    db_session.add_all([viewer_role, buyer_role, approver_role])
-    db_session.flush()
-    db_session.add_all(
-        [
-            RolePermission(role_id=viewer_role.id, permission_id=perms[Perm.PURCHASE_VIEW].id),
-            RolePermission(role_id=buyer_role.id, permission_id=perms[Perm.PURCHASE_VIEW].id),
-            RolePermission(role_id=buyer_role.id, permission_id=perms[Perm.PURCHASE_MANAGE].id),
-            RolePermission(role_id=approver_role.id, permission_id=perms[Perm.PURCHASE_VIEW].id),
-            RolePermission(role_id=approver_role.id, permission_id=perms[Perm.PURCHASE_APPROVE].id),
-        ]
-    )
-    accounts = [
-        ("pviewer", viewer_role, "pviewer123"),
-        ("buyer", buyer_role, "buyer123"),
-        ("approver", approver_role, "approver123"),
-    ]
-    for username, role, password in accounts:
-        user = User(username=username, password_hash=hash_password(password), real_name=username, status="ACTIVE")
-        db_session.add(user)
-        db_session.flush()
-        db_session.add(UserRole(user_id=user.id, role_id=role.id))
-    db_session.commit()
-    return {u: p for u, _, p in accounts}
-
-
-@pytest.fixture()
-def procurement_master(client, seeded):
-    """经 API 建好主数据，返回 admin 请求头与关键 id。"""
-    admin = _login(client, "admin", "admin123")
-    category = client.post("/api/v1/material-categories", headers=admin, json={"code": "C1", "name": "五金"}).json()["data"]
-    unit = client.post("/api/v1/units", headers=admin, json={"code": "PCS", "name": "个"}).json()["data"]
-    supplier = client.post("/api/v1/suppliers", headers=admin, json={"code": "S1", "name": "供应商甲"}).json()["data"]
-    material = client.post(
-        "/api/v1/materials",
-        headers=admin,
-        json={"code": "M1", "name": "螺丝", "category_id": category["id"], "unit_id": unit["id"]},
-    ).json()["data"]
-    batch_material = client.post(
-        "/api/v1/materials",
-        headers=admin,
-        json={
-            "code": "M2",
-            "name": "疫苗",
-            "category_id": category["id"],
-            "unit_id": unit["id"],
-            "is_batch_managed": True,
-            "shelf_life_days": 365,
-        },
-    ).json()["data"]
-    return {
-        "admin": admin,
-        "supplier_id": supplier["id"],
-        "material_id": material["id"],
-        "batch_material_id": batch_material["id"],
-    }
 
 
 def test_requisition_flow_to_purchase_order(client, seeded, purchase_users, procurement_master):

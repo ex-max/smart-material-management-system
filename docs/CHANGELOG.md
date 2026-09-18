@@ -65,3 +65,18 @@
 - **回滚**：`git revert <本次提交>`；若已建表，`alembic downgrade 0002_master_data`。
 - **备注**：本机无 PostgreSQL，迁移为人工编写（无法 autogenerate）并逐项核对 ORM；PG 专有行为待真库验证。
 
+## 2026-09-18 · 到货 → 入库 → 库存流水（M2-b）+ 本地 PostgreSQL
+
+- **改动**：
+  - 新增 `backend/app/model/inventory.py`：`inventory`（物资×仓库汇总）、`inventory_batch`（批次；非批次物资用 `__DEFAULT__` 默认批次）、`inventory_transaction`（唯一真值源，只 INSERT）、`inbound_order`/`inbound_item`。
+  - 新增迁移 `0004_inventory_inbound`（含完整 downgrade）。
+  - 新增 `repository`/`schema`/`service`/`api`：到货验收（`POST /supplier-deliveries/{id}/accept`：记录验收结论并生成入库单）、入库过账（`POST /inbound-orders/{id}/post`：`SELECT ... FOR UPDATE` 锁结存 → 同事务写 `inventory_transaction` → 更新 `inventory`/`inventory_batch` → 回写 `po_item.received_qty` 与采购订单状态）、完成/作废；库存查询（`/inventory`、`/inventory/batches`、`/inventory/transactions`）与 `GET /inventory/reconcile`（§14 对账）。
+  - `scripts/check_invariants.py` 扩展库存检查（只有 `service/inventory.py` 可改结存且必须写流水；流水表无 updated_at/deleted_at）；`scripts/verify.sh` 第 6 项改用 venv python。
+  - 新增 `deploy/docker-compose.yml`：独立 PostgreSQL 16（仅 127.0.0.1:5433，独立卷）；重写 `deploy/README.md`。
+  - 测试：新增 `tests/test_inventory.py`（8 条）；`conftest.py` 支持 `ERP_TEST_DATABASE_URL` 对 PG 跑。
+- **原因**：progress 的“下一步” M2-b —— 落地 `docs/db-schema.md` §5.1/§5.2/§5.9 与 §11.1/§11.2，闭合“采购→到货→入库→流水→结存”链路；并按用户要求补齐缺失环境（PostgreSQL）。
+- **验证**：`make verify` 绿（ruff 通过；`pytest 34 passed`；迁移链 816 行；不变量检查通过）。真库：PG16 上 `upgrade head`/`downgrade -1`/`upgrade head` 全通；`ERP_TEST_DATABASE_URL=postgresql+psycopg://erp:erp@127.0.0.1:5433/erp pytest` → 34 passed（覆盖 `FOR UPDATE`、部分唯一索引、CHECK）；`reconcile.ok=true`。
+- **回滚**：`git revert <本次提交>`；若已建表，`alembic downgrade 0003_procurement`；数据库实例 `docker compose -f deploy/docker-compose.yml down`（保留卷）。
+- **备注**：冻结状态机下已过账单据不可作废，故本期无 `REVERSAL` 红冲路径（随 M2-c 出库/盘点实现）。
+
+

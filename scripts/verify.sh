@@ -71,7 +71,9 @@ fi
 
 hdr "6/6 领域不变量自检（脚本化部分）"
 if [ -f scripts/check_invariants.py ]; then
-  python3 scripts/check_invariants.py && ok "不变量检查通过" || bad "不变量检查未通过"
+  inv_py=python3
+  [ -x backend/.venv/bin/python ] && inv_py=backend/.venv/bin/python
+  "$inv_py" scripts/check_invariants.py && ok "不变量检查通过" || bad "不变量检查未通过"
 else
   sk "scripts/check_invariants.py 尚未创建（库存对账/状态机检查将放这里）"
 fi

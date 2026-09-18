@@ -7,7 +7,9 @@ from app.core.permissions import Perm
 from app.core.response import ok
 from app.core.state_machine import Actions, DocTypes, get_transition
 from app.model.user import User
+from app.schema import inventory as ivs
 from app.schema import purchase as ps
+from app.service.inventory import InboundService
 from app.service.purchase import PurchaseOrderService, PurchaseRequisitionService, SupplierDeliveryService
 
 router = APIRouter(tags=["采购"])
@@ -31,6 +33,7 @@ _PO_CANCEL = require_perm(get_transition(_PO, Actions.CANCEL).permission)
 _RCV_MANAGE = require_perm(Perm.PURCHASE_MANAGE)
 _RCV_SUBMIT = require_perm(get_transition(_RCV, Actions.SUBMIT).permission)
 _RCV_CANCEL = require_perm(get_transition(_RCV, Actions.CANCEL).permission)
+_RCV_ACCEPT = require_perm(get_transition(_RCV, Actions.ACCEPT).permission)
 
 
 # ---------------- 请购单 ----------------
@@ -205,6 +208,17 @@ def delete_delivery(delivery_id: int, user: User = Depends(_RCV_MANAGE), db: Ses
 @router.post("/supplier-deliveries/{delivery_id}/submit", name="submit_supplier_delivery")
 def submit_delivery(delivery_id: int, user: User = Depends(_RCV_SUBMIT), db: Session = Depends(get_db)):
     return ok(ps.DeliveryOut.model_validate(SupplierDeliveryService(db).submit(delivery_id)).model_dump())
+
+
+@router.post("/supplier-deliveries/{delivery_id}/accept", name="accept_supplier_delivery")
+def accept_delivery(
+    delivery_id: int,
+    payload: ivs.DeliveryAcceptIn,
+    user: User = Depends(_RCV_ACCEPT),
+    db: Session = Depends(get_db),
+):
+    inbound = InboundService(db).accept_delivery(delivery_id, payload, user.id)
+    return ok(ivs.InboundOrderOut.model_validate(inbound).model_dump())
 
 
 @router.post("/supplier-deliveries/{delivery_id}/cancel", name="cancel_supplier_delivery")

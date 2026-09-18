@@ -42,12 +42,13 @@ cp .env.example .env                 # 配置（.env 不进仓库）
 ## 数据库说明（重要）
 
 - 目标库是 **PostgreSQL**（ADR-0001）；.env 的 ERP_DATABASE_URL 指向 PG。
-- 本机当前 **没有** PostgreSQL 实例：**测试用 SQLite 内存库**（tests/conftest.py 覆盖 get_db）。
-  因此 Postgres 专有行为（jsonb、部分唯一索引 postgresql_where）只在真实 PG 上验证；
-  部署/联调前需在 deploy/ 起独立 PG 实例（建议 127.0.0.1:5433，勿用机器上其他项目的库）。
+- 已提供独立 PG16 实例：`docker compose -f deploy/docker-compose.yml up -d`
+  （仅 127.0.0.1:5433，独立卷，**勿用机器上其他项目的库**）。
+- 默认 `pytest` 用 **SQLite 内存库**（tests/conftest.py 覆盖 get_db）；要对真库跑：
+  `ERP_TEST_DATABASE_URL=postgresql+psycopg://erp:erp@127.0.0.1:5433/erp .venv/bin/python -m pytest -q`。
 - make verify 的迁移检查是**离线渲染**（alembic upgrade head --sql），不需要连接数据库。
 
-## 已实现（M1-c）
+## 已实现（M1-c ~ M2-b）
 
 - 统一响应 {code, message, data, trace_id} + 业务错误码分段 + 全局异常处理 + 请求 trace_id
 - JWT 登录；require_perm 依赖做接口级 RBAC（users/roles/permissions/user_role/role_permission）
