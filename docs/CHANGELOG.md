@@ -19,3 +19,11 @@
 - **原因**：用户评审指示——§9 开放问题全部采纳建议；并把 GitHub 仓库与“每次收尾同步”写入规则。
 - **验证**：`make verify` 绿（跳过 4 项）。远程同步：`origin` 已指向 GitHub 仓库，推送结果见会话结论。
 - **回滚**：`git revert <本次提交>`（仅文档与规则，无代码副作用）。
+
+## 2026-09-18 · 数据库设计（M1-b：补全全库 41 张表）
+
+- **改动**：`docs/db-schema.md` 追加第二部分 §10–§13 —— 组织与权限 6（users/roles/permissions/user_role/role_permission/operation_log）、台账与统计 5（inventory/inventory_transaction/stock_alert/inventory_snapshot_daily/material_supplier_price）、预测与决策 6（demand_series_meta/model_registry/forecast_run/forecast_result/replenishment_policy/replenishment_suggestion）、系统 3（dict/scheduled_task_log/attachment）；新增 §14 E-R 补充与四条库存对账 SQL、§15 M1-b 开放问题；同步修正 §0 范围、§2 总览（41 张）、§8 跨组契约（澄清 inventory 粒度：汇总表=物资×仓库、明细表=批次）。`docs/progress.md` 同步更新（M1-b 完成 / 下一步 M1-c / 已知坑 / 对账状态）。
+- **原因**：`docs/progress.md` 的"下一步" M1-b —— 按 §8 接口契约补全其余四组，使全库设计闭环，供评审。
+- **验证**：`make verify` 绿（结构/lint/测试/迁移 4 项仍 skip）；文档自检：§2 共 41 行、§10–§13 共 20 张表。
+- **回滚**：`git revert <本次提交>`（仅 `docs/`，无代码/迁移副作用）。
+- **备注**：按用户要求，本次提交**先不推送**，待评审通过后再 `git push origin main`。

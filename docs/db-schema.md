@@ -1,7 +1,7 @@
-# 数据库设计（M1-a：主数据 + 采购 + 库存作业）
+# 数据库设计（全库 41 张表：主数据 / 采购 / 库存作业 / 组织与权限 / 台账与统计 / 预测与决策 / 系统）
 
-> **状态**：待评审。本组 21 张表评审通过后，下一会话（M1-b）再补其余四组。
-> **日期**：2026-09-18
+> **状态**：全库设计完成。第一部分（业务三组 21 张，M1-a）已评审通过；第二部分（其余四组 20 张，M1-b）待评审。
+> **版本**：v1.1（2026-09-18）
 > **依据**：毕设完整技术方案 v1 §4「数据库设计」（docs/plan 指向 /root/dsh/毕设-完整技术方案-v1.md）、AGENTS.md 硬规则与领域不变量、erp-db-migration 技能。
 > **目标库**：PostgreSQL。金额/数量一律 Decimal（numeric），时间一律 timestamptz 存 UTC。
 
@@ -9,16 +9,20 @@
 
 ## 0. 范围与决策基线
 
-### 0.1 本次范围（三组，共 21 张表）
+### 0.1 范围（全部 7 组，共 41 张表）
 
-| 组 | 张数 | 表 |
-|---|---|---|
-| 主数据 | 6 | material_category、material、unit、warehouse、location、supplier |
-| 采购 | 6 | purchase_requisition、pr_item、purchase_order、po_item、supplier_delivery、supplier_delivery_item |
-| 库存作业 | 9 | inbound_order、inbound_item、outbound_order、outbound_item、transfer_order、transfer_item、stocktake_order、stocktake_item、inventory_batch |
-| **合计** | **21** | |
+本文件已覆盖全库设计：**第一部分**（M1-a，§3–§5）为业务三组 21 张（已评审）；**第二部分**（M1-b，§10 起）为其余四组 20 张（待评审）。
 
-**不在本次范围**（M1-b）：组织与权限(6)、台账与统计(5)、预测与决策(6)、系统(3)。其中 inventory、inventory_transaction 只在第 8 节以“接口契约”形式出现，不建字段。
+| 组 | 张数 | 表 | 章节 |
+|---|---|---|---|
+| 主数据 | 6 | material_category、material、unit、warehouse、location、supplier | §3 |
+| 采购 | 6 | purchase_requisition、pr_item、purchase_order、po_item、supplier_delivery、supplier_delivery_item | §4 |
+| 库存作业 | 9 | inbound_order、inbound_item、outbound_order、outbound_item、transfer_order、transfer_item、stocktake_order、stocktake_item、inventory_batch | §5 |
+| 组织与权限 | 6 | users、roles、permissions、user_role、role_permission、operation_log | §10 |
+| 台账与统计 | 5 | inventory、inventory_transaction、stock_alert、inventory_snapshot_daily、material_supplier_price | §11 |
+| 预测与决策 | 6 | demand_series_meta、forecast_run、forecast_result、model_registry、replenishment_policy、replenishment_suggestion | §12 |
+| 系统 | 3 | dict、scheduled_task_log、attachment | §13 |
+| **合计** | **41** | | |
 
 ### 0.2 已确认决策（评审基线）
 
@@ -31,13 +35,14 @@
 | D5 | 到货 | 支持分批到货；验收通过后自动生成入库单 | supplier_delivery 头+行；inbound_order 由到货单驱动 |
 | D6 | 到货/调拨结构 | 拆头行（比方案示例各 +1 张） | 采购 6 张、库存作业 9 张 |
 | D7 | 盘点差异 | 生成盘盈/盘亏流水，不删历史流水，不加独立调整单 | 差异落 inventory_transaction（组5） |
-| D8 | 表数 | 三组 21 张（方案示例为 19） | 全库预计 41 张，见 0.3 |
+| D8 | 表数 | 业务三组 21 张 + 其余四组 20 张 = 全库 41 张 | 见 0.3 |
 
 ### 0.3 与方案的差异（评审需知晓）
 
 1. 方案把 supplier_delivery、transfer_order 各列为单表；本设计拆为“头 + 行”。原因：到货、调拨天然是多物资单据，单表会让单头字段（供应商、日期、状态）在每一行重复，且不利于状态机与追溯。代价是三组由 19 → 21 张。
-2. 方案写“约 36 张”，但按其分组示例逐项相加实为 39 张；再加本次头行拆分 +2，**全库预计 41 张**。若论文页码预算吃紧，建议优先合并/砍掉系统组（scheduled_task_log、attachment）而非业务表。
-3. docs/plan 只被引用，本会话未改动其中任何内容。
+2. 方案写“约 36 张”，但按其分组示例逐项相加实为 39 张；再加头行拆分 +2，**全库 41 张**（已全部落地，见 §10–§13）。若论文页码预算吃紧，建议优先合并/砍掉系统组（scheduled_task_log、attachment）而非业务表。
+3. **结存粒度澄清（M1-b）**：inventory 是 **物资×仓库** 的汇总结存，inventory_batch 是 **物资×仓库×批次** 的明细；约定 SUM(inventory_batch.quantity) == inventory.quantity（见 §11.1、§14）。§5.9 的批次口径不变。
+4. docs/plan 只被引用，本会话未改动其中任何内容。
 
 ---
 
@@ -157,7 +162,7 @@ DRAFT ──提交──▶ PENDING ──审核──▶ APPROVED ──执行�
 
 ---
 
-## 2. 表清单总览（21 张）
+## 2. 表清单总览（41 张）
 
 | # | 表名 | 组 | 职责 | 关键唯一 / 索引 |
 |---|---|---|---|---|
@@ -181,7 +186,27 @@ DRAFT ──提交──▶ PENDING ──审核──▶ APPROVED ──执行�
 | 18 | transfer_item | 库存作业 | 调拨行 | uq(transfer_id, line_no)；ix(material) |
 | 19 | stocktake_order | 库存作业 | 盘点单头 | uq(doc_no)；ix(warehouse/status) |
 | 20 | stocktake_item | 库存作业 | 盘点行（账面/实盘/差异） | uq(stocktake_id, line_no)；ix(material/batch) |
-| 21 | inventory_batch | 库存作业 | 批次结存（物资×仓库×批次） | uq(material_id, warehouse_id, batch_no) |
+| 21 | inventory_batch | 库存作业 | 批次结存明细（物资×仓库×批次） | uq(material_id, warehouse_id, batch_no) |
+| 22 | users | 组织与权限 | 用户账号 | uq(username)；ix(status) |
+| 23 | roles | 组织与权限 | 角色 | uq(code) |
+| 24 | permissions | 组织与权限 | 权限（菜单/接口/按钮） | uq(code)；ix(parent_id/type) |
+| 25 | user_role | 组织与权限 | 用户-角色 | uq(user_id, role_id) |
+| 26 | role_permission | 组织与权限 | 角色-权限 | uq(role_id, permission_id) |
+| 27 | operation_log | 组织与权限 | 操作日志（追加写） | ix(created_at/user_id/action/request_id) |
+| 28 | inventory | 台账与统计 | 汇总结存（物资×仓库） | uq(material_id, warehouse_id) |
+| 29 | inventory_transaction | 台账与统计 | 库存流水（唯一真值源） | ix(material,warehouse,occurred_at)/batch/source |
+| 30 | stock_alert | 台账与统计 | 库存预警 | uq(material_id,warehouse_id,batch_id,alert_type) WHERE OPEN |
+| 31 | inventory_snapshot_daily | 台账与统计 | 每日结存快照（供预测） | uq(snapshot_date, material_id, warehouse_id) |
+| 32 | material_supplier_price | 台账与统计 | 供货物资/供货价 | uq(material_id, supplier_id) |
+| 33 | demand_series_meta | 预测与决策 | 序列元数据（ADI/CV²/ABC） | uq(series_key) |
+| 34 | forecast_run | 预测与决策 | 预测批次 | uq(run_no)；ix(status,started_at) |
+| 35 | forecast_result | 预测与决策 | 预测结果（点值+区间） | uq(run_id, series_key, forecast_date) |
+| 36 | model_registry | 预测与决策 | 模型注册表 | uq(model_code, version) |
+| 37 | replenishment_policy | 预测与决策 | 补货策略参数（A/B 开关） | uq(policy_code) |
+| 38 | replenishment_suggestion | 预测与决策 | 补货建议（可解释） | uq(suggestion_no)；(material,warehouse) WHERE OPEN |
+| 39 | dict | 系统 | 展示型数据字典 | uq(dict_type, dict_key) |
+| 40 | scheduled_task_log | 系统 | 定时任务日志 | ix(task_name, started_at) |
+| 41 | attachment | 系统 | 附件元数据 | ix(biz_type, biz_id) |
 
 ---
 
@@ -777,14 +802,14 @@ flowchart LR
 
 ---
 
-## 8. 与未建组的接口契约（M1-b 需对齐）
+## 8. 跨组接口契约（M1-b 已落地，详见 §10–§13）
 
-1. **users(id)**：组织与权限组建 users 表；本组 created_by/updated_by/approved_by/receiver_id 等全部引用它。
-2. **inventory（组 5）**：粒度 = material_id × warehouse_id × batch_id；唯一约束建议 UNIQUE(material_id, warehouse_id, batch_id)。因 batch_id 非空（见 5.9 默认批次策略），无需 COALESCE 表达式索引。
-3. **inventory_transaction（组 5）**：字段需含 material_id、warehouse_id、batch_id、quantity（带符号或 direction IN/OUT）、source_type、source_id、source_line_id、occurred_at、created_by。本组所有作业过账都写它。
-4. **stock_alert（组 5）**：依据 material.safety_stock/max_stock 与 inventory_batch.status/expiry_date 生成。
-5. **material_supplier_price（组 5）**：供货物资与供货价；与 supplier.lead_time_days 的取值优先级需在 M1-b 明确。
-6. **forecast_/replenishment_（组 6）**：只读本组表，绝不回写。
+1. **users(id)（§10.1）**：created_by/updated_by/approved_by/receiver_id 等全部引用 users(id)；系统任务使用保留系统账号。
+2. **inventory（§11.1）**：粒度 = **material_id × warehouse_id**（汇总结存），UNIQUE(material_id, warehouse_id)；批次明细在 inventory_batch（material×warehouse×batch_no）。**修正**：本节初稿曾写 inventory 含 batch_id，M1-b 定为“inventory 汇总 + inventory_batch 明细”，二者必须满足 SUM(batch) == inventory（对账见 §14）。
+3. **inventory_transaction（§11.2）**：字段含 material_id、warehouse_id、batch_id、**带符号 quantity**（SUM(quantity) 即为结存）、txn_type、source_type、source_id/source_no/source_line_id、occurred_at、created_by；所有作业过账只写它。
+4. **stock_alert（§11.3）**：依据 material.safety_stock/max_stock、inventory 结存与 inventory_batch.status/expiry_date 生成。
+5. **material_supplier_price（§11.5）**：供货物资与供货价；提前期取值优先级（service 层统一）= material.lead_time_days > material_supplier_price.lead_time_days > supplier.lead_time_days。
+6. **forecast_/replenishment_（§12）**：只读业务表、只写预测与建议表，绝不回写业务表（AGENTS 不变量 4）。
 
 ---
 
@@ -802,3 +827,529 @@ flowchart LR
 | Q8 | 出库成本口径 | 不含财务成本核算，unit_price/amount 仅占位（方案范围声明） |
 
 > 结论已同步到 docs/progress.md 的“已知坑 / 未决问题”（状态：已确认 · 采纳建议）。
+
+---
+
+# 第二部分：其余四组（M1-b，20 张）
+
+## 10. 组织与权限组（6 张）
+
+> RBAC：用户 —(user_role)— 角色 —(role_permission)— 权限。权限 code 逐级下钻到接口，后端强制校验、前端仅做展示。Q1 已定：表名用复数 users/roles/permissions（避开 PostgreSQL 保留字 user）。
+
+### 10.1 users 用户
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| username | varchar(64) | NOT NULL | 登录名 |
+| password_hash | varchar(255) | NOT NULL | 口令哈希（bcrypt/argon2），禁止明文 |
+| real_name | varchar(64) | NULL | 姓名 |
+| phone | varchar(32) | NULL | 手机 |
+| email | varchar(128) | NULL | 邮箱 |
+| avatar | varchar(255) | NULL | 头像地址 |
+| dept_name | varchar(64) | NULL | 部门（Q3：方案无 dept 表，用文本） |
+| is_superuser | boolean | NOT NULL DEFAULT false | 超级管理员（绕过权限校验，慎用） |
+| status | varchar(16) | NOT NULL DEFAULT 'ACTIVE', CHECK IN ('ACTIVE','DISABLED','LOCKED') | 状态 |
+| last_login_at | timestamptz | NULL | 最后登录时间 |
+| last_login_ip | varchar(45) | NULL | 最后登录 IP（兼容 IPv6） |
+| pwd_updated_at | timestamptz | NULL | 口令最后修改时间 |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (username) WHERE deleted_at IS NULL。
+- 索引：ix_users_status。
+- 关系：1:N user_role；1:N operation_log；被各业务表 created_by/updated_by 引用。
+
+### 10.2 roles 角色
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| code | varchar(32) | NOT NULL | 角色编码，如 ADMIN/BUYER/KEEPER |
+| name | varchar(64) | NOT NULL | 角色名称 |
+| description | varchar(255) | NULL | 说明 |
+| is_builtin | boolean | NOT NULL DEFAULT false | 内置角色（不可删） |
+| sort_no | int | NOT NULL DEFAULT 0 | 排序 |
+| status | varchar(16) | NOT NULL DEFAULT 'ACTIVE', CHECK IN ('ACTIVE','INACTIVE') | 状态 |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (code) WHERE deleted_at IS NULL。
+- 关系：1:N user_role、role_permission。
+
+### 10.3 permissions 权限
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| parent_id | bigint | NULL, FK→permissions RESTRICT | 父权限（菜单树） |
+| code | varchar(64) | NOT NULL | 权限码，如 material:create、purchase:approve、inventory:view |
+| name | varchar(64) | NOT NULL | 名称 |
+| type | varchar(16) | NOT NULL, CHECK IN ('MENU','API','BUTTON','DATA') | 类型：菜单/接口/按钮/数据范围 |
+| method | varchar(8) | NULL | HTTP 方法（type=API 时） |
+| path | varchar(255) | NULL | 路由或接口路径 |
+| sort_no | int | NOT NULL DEFAULT 0 | 排序 |
+| is_active | boolean | NOT NULL DEFAULT true | |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (code) WHERE deleted_at IS NULL；ix_permissions_parent_id、ix_permissions_type。
+- 说明：服务端以 code 做鉴权（require_perm('purchase:approve')）；菜单项仅影响前端可见性。
+
+### 10.4 user_role 用户-角色
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| user_id | bigint | NOT NULL, FK→users CASCADE | 用户 |
+| role_id | bigint | NOT NULL, FK→roles CASCADE | 角色 |
+
+- 约束：UNIQUE (user_id, role_id)；ix_user_role_role_id。含通用审计字段。
+
+### 10.5 role_permission 角色-权限
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| role_id | bigint | NOT NULL, FK→roles CASCADE | 角色 |
+| permission_id | bigint | NOT NULL, FK→permissions CASCADE | 权限 |
+
+- 约束：UNIQUE (role_id, permission_id)；ix_role_permission_permission_id。含通用审计字段。
+
+### 10.6 operation_log 操作日志
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| user_id | bigint | NULL, FK→users RESTRICT | 操作人 |
+| username | varchar(64) | NULL | 操作人快照 |
+| module | varchar(32) | NULL | 模块（material/purchase/inventory/...） |
+| action | varchar(64) | NOT NULL | 操作码，如 purchase.order.approve |
+| resource_type | varchar(64) | NULL | 资源类型 |
+| resource_id | varchar(64) | NULL | 资源 id |
+| method | varchar(8) | NULL | HTTP 方法 |
+| path | varchar(255) | NULL | 请求路径 |
+| ip | varchar(45) | NULL | 来源 IP |
+| user_agent | varchar(255) | NULL | UA |
+| request_id | varchar(64) | NULL | 链路 id（响应体的 trace_id） |
+| result | varchar(16) | NOT NULL DEFAULT 'SUCCESS', CHECK IN ('SUCCESS','FAIL') | 结果 |
+| error_code | varchar(16) | NULL | 业务错误码 |
+| duration_ms | int | NULL | 耗时 |
+| detail | jsonb | NULL | 关键参数/变更前后（仅审计用） |
+| created_at | timestamptz | NOT NULL DEFAULT now() | 写入时间（UTC） |
+
+- **日志类例外**：只追加、不更新、不软删，故不设 updated_at/updated_by/deleted_at/created_by（created_at + user_id 足够）；detail 用 PostgreSQL 原生 jsonb，不引入新依赖。
+- 索引：ix_operation_log_created_at、ix_operation_log_user_id、ix_operation_log_action、ix_operation_log_request_id。
+
+---
+
+## 11. 台账与统计组（5 张）
+
+> 本组是库存不变量 1 的落点：余额只能由流水推导。inventory / inventory_batch 只能由过账服务在同一事务内更新，任何直接 UPDATE 结存的代码路径都是 bug（对账见 §14）。
+
+### 11.1 inventory 汇总结存（物资×仓库）
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| material_id | bigint | NOT NULL, FK→material RESTRICT | 物资 |
+| warehouse_id | bigint | NOT NULL, FK→warehouse RESTRICT | 仓库 |
+| quantity | numeric(18,4) | NOT NULL DEFAULT 0, CHECK ≥0 | 结存 = SUM(流水) = SUM(批次) |
+| locked_qty | numeric(18,4) | NOT NULL DEFAULT 0, CHECK ≥0 | 预留/锁定 |
+| version | int | NOT NULL DEFAULT 0 | 乐观锁版本号 |
+| last_txn_at | timestamptz | NULL | 最近一次流水时间 |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (material_id, warehouse_id) WHERE deleted_at IS NULL；CHECK (quantity >= locked_qty)。
+- 索引：ix_inventory_warehouse_id、ix_inventory_(material_id, warehouse_id)。
+- 一致性：quantity = SUM(inventory_transaction.quantity) = SUM(inventory_batch.quantity)（按 material+warehouse）。非批次物资也有默认批次（§5.9），口径统一。
+
+### 11.2 inventory_transaction 库存流水（唯一真值源）
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| idem_key | varchar(64) | NULL | 幂等键（如 单据:行号:类型），防重复过账 |
+| material_id | bigint | NOT NULL, FK→material RESTRICT | 物资 |
+| warehouse_id | bigint | NOT NULL, FK→warehouse RESTRICT | 仓库 |
+| batch_id | bigint | NOT NULL, FK→inventory_batch RESTRICT | 批次（非批次物资为默认批次） |
+| quantity | numeric(18,4) | NOT NULL, CHECK <> 0 | **带符号**：入库为正、出库为负；盘盈正、盘亏负 |
+| txn_type | varchar(16) | NOT NULL, CHECK IN ('INBOUND','OUTBOUND','TRANSFER_IN','TRANSFER_OUT','STOCKTAKE_GAIN','STOCKTAKE_LOSS','REVERSAL') | 业务类型 |
+| source_type | varchar(16) | NOT NULL, CHECK IN ('INBOUND','OUTBOUND','TRANSFER','STOCKTAKE','MANUAL') | 来源单据类型 |
+| source_id | bigint | NULL | 来源单据 id |
+| source_no | varchar(32) | NULL | 来源单号快照 |
+| source_line_id | bigint | NULL | 来源单据行 id |
+| balance_after | numeric(18,4) | NULL | 过账后该批次结存（追溯） |
+| unit_price | numeric(18,4) | NULL, CHECK ≥0 | 单价（非财务口径） |
+| amount | numeric(18,4) | NULL | 金额（冗余） |
+| occurred_at | timestamptz | NOT NULL DEFAULT now() | 业务发生时间 |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (idem_key) WHERE idem_key IS NOT NULL。
+- 索引：ix_itxn_(material_id, warehouse_id, occurred_at)、ix_itxn_batch_id、ix_itxn_(source_type, source_id)、ix_itxn_txn_type、ix_itxn_occurred_at。
+- **写规则**：只 INSERT，禁止 UPDATE/DELETE；单据作废/红冲产生 txn_type=REVERSAL 的反向流水。
+
+### 11.3 stock_alert 库存预警
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| material_id | bigint | NOT NULL, FK→material RESTRICT | 物资 |
+| warehouse_id | bigint | NULL, FK→warehouse RESTRICT | 仓库（空=全局） |
+| batch_id | bigint | NULL, FK→inventory_batch RESTRICT | 批次（临期类） |
+| alert_type | varchar(16) | NOT NULL, CHECK IN ('LOW_STOCK','OUT_OF_STOCK','OVER_STOCK','NEAR_EXPIRY','EXPIRED','SLOW_MOVING') | 预警类型 |
+| level | varchar(8) | NOT NULL DEFAULT 'WARN', CHECK IN ('INFO','WARN','CRITICAL') | 级别 |
+| status | varchar(16) | NOT NULL DEFAULT 'OPEN', CHECK IN ('OPEN','ACKED','RESOLVED','IGNORED') | 状态 |
+| threshold | numeric(18,4) | NULL | 触发阈值 |
+| current_value | numeric(18,4) | NULL | 触发时实际值 |
+| message | varchar(255) | NULL | 描述 |
+| triggered_at | timestamptz | NOT NULL DEFAULT now() | 触发时间 |
+| acked_by | bigint | NULL, FK→users RESTRICT | 确认人 |
+| acked_at | timestamptz | NULL | 确认时间 |
+| resolved_at | timestamptz | NULL | 解决时间 |
+| remark | varchar(255) | NULL | |
+
+- 约束：同物料/仓库/批次同类型未关闭前不重复 → 部分唯一 (material_id, COALESCE(warehouse_id,0), COALESCE(batch_id,0), alert_type) WHERE status IN ('OPEN','ACKED')（COALESCE 处理 NULL 语义）。
+- 索引：ix_stock_alert_(material_id, status)、ix_stock_alert_(alert_type, status)、ix_stock_alert_triggered_at。
+
+### 11.4 inventory_snapshot_daily 每日结存快照
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| snapshot_date | date | NOT NULL | 业务日（Asia/Shanghai） |
+| material_id | bigint | NOT NULL, FK→material RESTRICT | 物资 |
+| warehouse_id | bigint | NOT NULL, FK→warehouse RESTRICT | 仓库 |
+| quantity | numeric(18,4) | NOT NULL DEFAULT 0 | 当日结存 |
+| locked_qty | numeric(18,4) | NOT NULL DEFAULT 0 | 当日锁定 |
+| in_transit_qty | numeric(18,4) | NOT NULL DEFAULT 0 | 当日在途（po_item 未到货量） |
+| created_at | timestamptz | NOT NULL DEFAULT now() | |
+
+- 约束：UNIQUE (snapshot_date, material_id, warehouse_id)。
+- 索引：ix_isd_snapshot_date、ix_isd_(material_id, snapshot_date)。
+- 说明：粒度=物资×仓库×日（供预测聚合日序列）；定时任务生成、当日可重算（upsert）；ML 只读。
+
+### 11.5 material_supplier_price 供货物资/供货价
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| material_id | bigint | NOT NULL, FK→material RESTRICT | 物资 |
+| supplier_id | bigint | NOT NULL, FK→supplier RESTRICT | 供应商 |
+| unit_price | numeric(18,4) | NOT NULL, CHECK ≥0 | 供货价 |
+| currency | varchar(8) | NOT NULL DEFAULT 'CNY' | 币种 |
+| min_order_qty | numeric(18,4) | NULL, CHECK >0 | 起订量 |
+| lead_time_days | numeric(8,2) | NULL, CHECK >0 | 该供应商对该物料的交期 |
+| is_preferred | boolean | NOT NULL DEFAULT false | 是否优先供应商 |
+| valid_from | date | NULL | 生效日 |
+| valid_to | date | NULL | 失效日 |
+| status | varchar(16) | NOT NULL DEFAULT 'ACTIVE', CHECK IN ('ACTIVE','INACTIVE') | 状态 |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (material_id, supplier_id) WHERE deleted_at IS NULL；每物料至多一个优先供应商 → 部分唯一 (material_id) WHERE is_preferred AND deleted_at IS NULL。
+- 索引：ix_msp_supplier_id。
+- 说明：价格历史版本化（valid_from/valid_to）见 §15-Q3，本期先单条当前价。
+
+---
+
+## 12. 预测与决策组（6 张，论文核心）
+
+> AGENTS 不变量 4：预测模块只读业务表，只写本组表；预测失败不得影响业务单据。
+
+### 12.1 demand_series_meta 需求序列元数据
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| series_key | varchar(64) | NOT NULL | 序列键（material_id:warehouse_id），唯一 |
+| material_id | bigint | NOT NULL, FK→material RESTRICT | 物资 |
+| warehouse_id | bigint | NULL, FK→warehouse RESTRICT | 仓库（空=按物资聚合） |
+| data_start_date | date | NULL | 序列起始 |
+| data_end_date | date | NULL | 序列结束 |
+| obs_days | int | NULL | 观测天数 |
+| non_zero_days | int | NULL | 非零需求天数 |
+| adi | numeric(10,4) | NULL | 平均需求间隔 |
+| cv2 | numeric(10,4) | NULL | 需求变异系数平方 |
+| demand_class | varchar(16) | NULL, CHECK IN ('SMOOTH','ERRATIC','INTERMITTENT','LUMPY') | 平滑/波动/间歇/块状 |
+| abc_class | varchar(1) | NULL, CHECK IN ('A','B','C') | ABC 分级 |
+| mean_daily | numeric(18,4) | NULL | 日均需求 |
+| std_daily | numeric(18,4) | NULL | 日需求标准差 |
+| last_calc_at | timestamptz | NULL | 最近计算时间 |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (series_key)；ix_dsm_(material_id, warehouse_id)、ix_dsm_demand_class。
+- 分层判据（§6.1）：ADI < 1.32 且 CV² < 0.49 → SMOOTH；ADI ≥ 1.32 且 CV² < 0.49 → INTERMITTENT；其余 → ERRATIC/LUMPY（由计算任务写入，不在库内计算）。
+
+### 12.2 model_registry 模型注册表
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| model_code | varchar(64) | NOT NULL | 模型编码（如 lgbm_demand_v1） |
+| model_type | varchar(32) | NOT NULL, CHECK IN ('NAIVE','SEASONAL_NAIVE','MA','ETS','ARIMA','SARIMA','RIDGE','RF','LIGHTGBM','XGBOOST','CROSTON','TSB','LSTM','TCN') | 模型类别 |
+| version | varchar(32) | NOT NULL | 版本 |
+| params | jsonb | NULL | 超参快照 |
+| feature_config | jsonb | NULL | 特征配置快照 |
+| metrics | jsonb | NULL | 训练/验证指标快照（sMAPE/MASE…） |
+| artifact_path | varchar(255) | NULL | 模型文件相对路径（不入 git） |
+| trained_at | timestamptz | NULL | 训练时间 |
+| trained_by | bigint | NULL, FK→users RESTRICT | 训练发起人 |
+| is_active | boolean | NOT NULL DEFAULT false | 是否当前启用 |
+| status | varchar(16) | NOT NULL DEFAULT 'READY', CHECK IN ('TRAINING','READY','ARCHIVED','FAILED') | 状态 |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (model_code, version)；ix_model_registry_(model_type, is_active)。
+- 说明：定时重训 + 版本回滚（§11 答辩要点）；is_active 唯一性由 service 层按预测场景保证。
+
+### 12.3 forecast_run 预测批次
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| run_no | varchar(32) | NOT NULL | 批次号 FR-YYYYMMDD-#### |
+| trigger_type | varchar(16) | NOT NULL, CHECK IN ('MANUAL','SCHEDULED','BACKTEST') | 触发方式 |
+| status | varchar(16) | NOT NULL DEFAULT 'RUNNING', CHECK IN ('RUNNING','SUCCESS','PARTIAL','FAILED') | 状态 |
+| horizon_days | int | NOT NULL, CHECK >0 | 预测步长（7/14/30） |
+| train_start_date | date | NULL | 训练窗起 |
+| train_end_date | date | NULL | 训练窗止 |
+| forecast_start_date | date | NULL | 预测起 |
+| series_count | int | NOT NULL DEFAULT 0 | 计划序列数 |
+| success_count | int | NOT NULL DEFAULT 0 | 成功数 |
+| failed_count | int | NOT NULL DEFAULT 0 | 失败数 |
+| started_at | timestamptz | NOT NULL DEFAULT now() | 开始 |
+| finished_at | timestamptz | NULL | 结束 |
+| duration_ms | int | NULL | 耗时 |
+| error_summary | text | NULL | 失败摘要 |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (run_no)；ix_forecast_run_(status, started_at)。
+- 说明：一次批量预测 = 一个 run；A/B 仿真可用 BACKTEST 触发。
+
+### 12.4 forecast_result 预测结果
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| run_id | bigint | NOT NULL, FK→forecast_run CASCADE | 批次 |
+| series_key | varchar(64) | NOT NULL | 序列键 |
+| material_id | bigint | NOT NULL, FK→material RESTRICT | 物资 |
+| warehouse_id | bigint | NULL, FK→warehouse RESTRICT | 仓库 |
+| forecast_date | date | NOT NULL | 预测目标日 |
+| horizon_step | int | NOT NULL, CHECK >0 | 步长序号 |
+| y_hat | numeric(18,4) | NOT NULL, CHECK ≥0 | 预测值（点估计） |
+| y_lower | numeric(18,4) | NULL | 区间下界 |
+| y_upper | numeric(18,4) | NULL | 区间上界 |
+| model_code | varchar(64) | NULL | 模型编码快照 |
+| model_version | varchar(32) | NULL | 模型版本快照 |
+| demand_class | varchar(16) | NULL | 分层快照 |
+| created_at | timestamptz | NOT NULL DEFAULT now() | |
+
+- 约束：UNIQUE (run_id, series_key, forecast_date)；CHECK (y_lower IS NULL OR y_upper IS NULL OR y_lower <= y_hat AND y_hat <= y_upper)。
+- 索引：ix_forecast_result_(material_id, forecast_date)、ix_forecast_result_run_id。
+- 说明：区间用于"预测不准怎么办"（§11 答辩要点）；仅 forecast_* 表可写，业务表只读。
+
+### 12.5 replenishment_policy 补货策略参数
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| policy_code | varchar(32) | NOT NULL | 策略编码 |
+| policy_name | varchar(64) | NULL | 策略名称 |
+| material_id | bigint | NULL, FK→material RESTRICT | 适用物料（空=全局） |
+| warehouse_id | bigint | NULL, FK→warehouse RESTRICT | 适用仓库（空=全部） |
+| strategy | varchar(16) | NOT NULL, CHECK IN ('FIXED','FORECAST','EOQ','MIN_MAX') | 固定阈值(A)/预测驱动(B)/EOQ/最小-最大 |
+| service_level_type | varchar(16) | NULL, CHECK IN ('CSL','FILL_RATE') | 服务水平口径（M5 定稿，全程一致） |
+| service_level | numeric(5,2) | NULL, CHECK 0–100 | 目标服务水平 |
+| z_value | numeric(6,3) | NULL | 正态分位数（如 95% → 1.645） |
+| review_period_days | int | NULL, CHECK >0 | 检查周期 |
+| order_cost | numeric(18,4) | NULL, CHECK ≥0 | 订货成本 S（EOQ 用） |
+| holding_cost_rate | numeric(9,6) | NULL, CHECK ≥0 | 持有成本率/单位持有成本 H |
+| min_order_qty | numeric(18,4) | NULL, CHECK >0 | 起订量 |
+| pack_size | numeric(18,4) | NULL, CHECK >0 | 包装倍数 |
+| lead_time_days | numeric(8,2) | NULL, CHECK >0 | 提前期覆盖 |
+| safety_stock_override | numeric(18,4) | NULL | 手工指定 SS（策略 A 用） |
+| rop_override | numeric(18,4) | NULL | 手工指定 ROP（策略 A 用） |
+| is_active | boolean | NOT NULL DEFAULT true | |
+| effective_from | date | NULL | 生效日 |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (policy_code) WHERE deleted_at IS NULL。
+- 索引：ix_replenishment_policy_(material_id, warehouse_id)。
+- 说明：A/B 仿真靠它切换；取值优先级 material+warehouse > material > 全局（service 层统一）。
+
+### 12.6 replenishment_suggestion 补货建议（可解释）
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| suggestion_no | varchar(32) | NOT NULL | 建议号 RS-YYYYMMDD-#### |
+| material_id | bigint | NOT NULL, FK→material RESTRICT | 物资 |
+| warehouse_id | bigint | NOT NULL, FK→warehouse RESTRICT | 仓库 |
+| policy_id | bigint | NULL, FK→replenishment_policy RESTRICT | 采用的策略 |
+| forecast_run_id | bigint | NULL, FK→forecast_run RESTRICT | 引用预测批次 |
+| trigger_type | varchar(16) | NOT NULL, CHECK IN ('BELOW_ROP','FORECAST','SAFETY','MANUAL') | 触发方式 |
+| status | varchar(16) | NOT NULL DEFAULT 'OPEN', CHECK IN ('OPEN','SUGGESTED','CONVERTED','REJECTED','EXPIRED','CLOSED') | 状态 |
+| current_qty | numeric(18,4) | NOT NULL DEFAULT 0 | 当前结存 |
+| locked_qty | numeric(18,4) | NOT NULL DEFAULT 0 | 锁定 |
+| in_transit_qty | numeric(18,4) | NOT NULL DEFAULT 0 | 在途 |
+| available_qty | numeric(18,4) | NOT NULL DEFAULT 0 | 可用 = 结存 − 锁定 + 在途 |
+| daily_demand_hat | numeric(18,4) | NULL | 预测日均需求 |
+| lead_time_days | numeric(8,2) | NULL | 提前期均值 |
+| sigma_d | numeric(18,4) | NULL | 需求标准差（日） |
+| sigma_lt | numeric(8,2) | NULL | 提前期标准差 |
+| safety_stock | numeric(18,4) | NULL | SS = z·√(LT·σD² + D̂²·σLT²) |
+| rop | numeric(18,4) | NULL | ROP = D̂·LT + SS |
+| eoq | numeric(18,4) | NULL | EOQ 参考量 |
+| suggested_qty | numeric(18,4) | NOT NULL, CHECK ≥0 | 建议订货量（按起订量/包装取整前） |
+| final_qty | numeric(18,4) | NULL, CHECK ≥0 | 取整/人工确认后数量 |
+| reason | text | NULL | **触发依据**（可解释性） |
+| generated_at | timestamptz | NOT NULL DEFAULT now() | 生成时间 |
+| expires_at | timestamptz | NULL | 失效时间 |
+| converted_pr_id | bigint | NULL, FK→purchase_requisition RESTRICT | 一键转请购单 |
+| converted_at | timestamptz | NULL | 转单时间 |
+| handled_by | bigint | NULL, FK→users RESTRICT | 处理人 |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (suggestion_no)；同物料/仓库未处理建议不重复 → 部分唯一 (material_id, warehouse_id) WHERE status IN ('OPEN','SUGGESTED')。
+- 索引：ix_rs_(status, generated_at)、ix_rs_(material_id, warehouse_id)。
+- 说明（AGENTS 不变量 5）：current_qty/in_transit_qty/available_qty/rop/safety_stock/预测值/参数来源（policy_id、forecast_run_id）齐备，天然可解释；reason 存自然语言触发依据。
+
+---
+
+## 13. 系统组（3 张）
+
+### 13.1 dict 数据字典
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| dict_type | varchar(64) | NOT NULL | 字典类型（如 priority、alert_level） |
+| dict_key | varchar(64) | NOT NULL | 键 |
+| dict_label | varchar(128) | NOT NULL | 展示值 |
+| sort_no | int | NOT NULL DEFAULT 0 | 排序 |
+| is_active | boolean | NOT NULL DEFAULT true | |
+| remark | varchar(255) | NULL | |
+
+- 约束：UNIQUE (dict_type, dict_key)。
+- 说明：**边界**——业务枚举以代码常量 + 列 CHECK 为单一事实源；dict 只放展示型/可运营字典，避免双份真值。
+
+### 13.2 scheduled_task_log 定时任务日志
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| task_name | varchar(64) | NOT NULL | 任务名（forecast_daily/alert_scan/snapshot_daily…） |
+| task_type | varchar(32) | NULL | 类型 |
+| status | varchar(16) | NOT NULL DEFAULT 'RUNNING', CHECK IN ('RUNNING','SUCCESS','FAILED','SKIPPED') | 状态 |
+| started_at | timestamptz | NOT NULL DEFAULT now() | 开始 |
+| finished_at | timestamptz | NULL | 结束 |
+| duration_ms | int | NULL | 耗时 |
+| affected_rows | int | NULL | 影响行数 |
+| result_summary | varchar(255) | NULL | 摘要 |
+| error_detail | text | NULL | 错误详情 |
+| trace_id | varchar(64) | NULL | 链路 id |
+
+- 约束：日志类，追加写。
+- 索引：ix_stl_(task_name, started_at)、ix_stl_status。
+
+### 13.3 attachment 附件元数据
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | bigint | PK identity | |
+| biz_type | varchar(32) | NOT NULL | 关联业务类型（purchase_order/inbound_order…） |
+| biz_id | bigint | NOT NULL | 关联业务 id |
+| file_name | varchar(255) | NOT NULL | 原始文件名 |
+| file_path | varchar(512) | NOT NULL | 存储相对路径（本地磁盘，不入 git） |
+| file_size | bigint | NULL, CHECK ≥0 | 字节数 |
+| content_type | varchar(128) | NULL | MIME |
+| sha256 | varchar(64) | NULL | 校验和 |
+| storage | varchar(16) | NOT NULL DEFAULT 'LOCAL', CHECK IN ('LOCAL','OSS','S3') | 存储类型 |
+| uploaded_by | bigint | NULL, FK→users RESTRICT | 上传人 |
+
+- 索引：ix_attachment_(biz_type, biz_id)、ix_attachment_sha256。
+- 说明：文件本体不入库；DB 只存元数据与路径。
+
+---
+
+## 14. E-R 补充与库存对账口径
+
+### 14.1 组织与权限
+
+~~~mermaid
+erDiagram
+    users ||--o{ user_role : "授予"
+    roles ||--o{ user_role : "被授予"
+    roles ||--o{ role_permission : "拥有"
+    permissions ||--o{ role_permission : "被拥有"
+    permissions ||--o{ permissions : "父子"
+    users ||--o{ operation_log : "操作"
+~~~
+
+### 14.2 台账与统计 / 预测与决策
+
+~~~mermaid
+erDiagram
+    material ||--o{ inventory : "汇总结存"
+    warehouse ||--o{ inventory : "汇总结存"
+    inventory_batch ||--o{ inventory_transaction : "批次流水"
+    material ||--o{ inventory_transaction : "流水"
+    warehouse ||--o{ inventory_transaction : "流水"
+    material ||--o{ stock_alert : "预警"
+    material ||--o{ inventory_snapshot_daily : "日快照"
+    material ||--o{ material_supplier_price : "供货价"
+    supplier ||--o{ material_supplier_price : "供货价"
+    material ||--o{ demand_series_meta : "序列"
+    forecast_run ||--o{ forecast_result : "含结果"
+    model_registry ||--o{ forecast_result : "产出"
+    material ||--o{ replenishment_policy : "适用"
+    replenishment_policy ||--o{ replenishment_suggestion : "生成"
+    forecast_run ||--o{ replenishment_suggestion : "依据"
+    purchase_requisition ||--o{ replenishment_suggestion : "转单"
+~~~
+
+### 14.3 库存对账 SQL（M2 实现后必须跑；差异处置策略：告警 + 阻断过账）
+
+~~~sql
+-- ① 批次明细汇总 == 仓库汇总结存
+SELECT i.material_id, i.warehouse_id, i.quantity AS inventory_qty, b.batch_sum
+FROM inventory i
+LEFT JOIN (
+  SELECT material_id, warehouse_id, SUM(quantity) AS batch_sum
+  FROM inventory_batch WHERE deleted_at IS NULL GROUP BY material_id, warehouse_id
+) b ON b.material_id = i.material_id AND b.warehouse_id = i.warehouse_id
+WHERE i.deleted_at IS NULL AND i.quantity <> COALESCE(b.batch_sum, 0);
+
+-- ② 流水汇总 == 仓库汇总结存
+SELECT i.material_id, i.warehouse_id, i.quantity AS inventory_qty, t.txn_sum
+FROM inventory i
+LEFT JOIN (
+  SELECT material_id, warehouse_id, SUM(quantity) AS txn_sum
+  FROM inventory_transaction GROUP BY material_id, warehouse_id
+) t ON t.material_id = i.material_id AND t.warehouse_id = i.warehouse_id
+WHERE i.deleted_at IS NULL AND i.quantity <> COALESCE(t.txn_sum, 0);
+
+-- ③ 批次级：流水 == 批次结存
+SELECT b.material_id, b.warehouse_id, b.batch_no, b.quantity, t.txn_sum
+FROM inventory_batch b
+LEFT JOIN (
+  SELECT batch_id, SUM(quantity) AS txn_sum
+  FROM inventory_transaction GROUP BY batch_id
+) t ON t.batch_id = b.id
+WHERE b.deleted_at IS NULL AND b.quantity <> COALESCE(t.txn_sum, 0);
+
+-- ④ 不变量守卫：不得出现负结存 / 锁定超结存
+SELECT * FROM inventory WHERE quantity < 0 OR quantity < locked_qty;
+~~~
+
+---
+
+## 15. 剩余开放问题（M1-b，评审逐条拍板；下列均附建议）
+
+| # | 问题 | 建议 | 状态 |
+|---|---|---|---|
+| M1B-Q1 | 是否做数据范围权限（按仓库/部门行级隔离） | 本期只做功能权限 RBAC（MENU/API/BUTTON）；DATA 类型权限码预留，不做行级隔离 | 待评审 |
+| M1B-Q2 | 服务水平口径 CSL / Fill Rate | 由 replenishment_policy.service_level_type 承载；M5 前定稿并全程一致 | 待评审（M5 定稿） |
+| M1B-Q3 | 供货价是否历史版本化 | 本期单条当前价（valid_from/valid_to 预留）；需要历史再加价格历史表 | 待评审 |
+| M1B-Q4 | 日快照保留期 | 建议 3 年（与生成数据一致），超期归档 | 待评审 |
+| M1B-Q5 | 附件存储 | 本期本地磁盘（storage=LOCAL + 相对路径），后续可换对象存储 | 待评审 |
+| M1B-Q6 | operation_log 保留/清理 | 建议按年归档、不物理删除 | 待评审 |
+| M1B-Q7 | dict 与代码枚举边界 | 业务枚举以代码常量 + 列 CHECK 为单一事实源；dict 仅展示型 | 待评审 |
+
