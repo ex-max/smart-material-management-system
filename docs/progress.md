@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- **里程碑**：**M2 完成**（采购单据/状态机 · 到货→入库→库存流水 · 出库/调拨/盘点 + 红冲 · 预警/快照/供货价）；下一步 **M3 数据与预测**（开工前先换对话框，见下）
-- **更新时间**：2026-09-18
+- **里程碑**：**M3 完成**（模拟数据生成 · 需求分层 ADI/CV² · Naive/MA/ETS 基线滚动回测）；下一步 **M4 特征工程 + LightGBM**（开工前先换对话框，见下）
+- **更新时间**：2026-09-19
 
 ## 已完成
 
@@ -21,6 +21,7 @@
 - [x] **M2-b 到货验收 → 入库 → 库存流水**：`inventory`/`inventory_batch`/`inventory_transaction` + `inbound_order`/`inbound_item` ORM 与迁移 `0004_inventory_inbound`；到货验收（`PENDING→APPROVED`，生成入库单）、入库过账（`DRAFT→IN_PROGRESS`：`SELECT ... FOR UPDATE` 锁结存 → 写流水 → 更新 `inventory`/`inventory_batch` → 回写 `po_item.received_qty`/采购订单状态）、完成；库存查询 + `GET /inventory/reconcile` 对账接口；非批次物资默认批次 `__DEFAULT__`；34 条测试（SQLite + PostgreSQL 双跑）
 - [x] **M2-c 出库 / 调拨 / 盘点 + 红冲**：`outbound_order`/`outbound_item`、`transfer_order`/`transfer_item`、`stocktake_order`/`stocktake_item` ORM + 迁移 `0005_inventory_ops`（并给 `inbound_order` 补 `transfer_order_id`）；抽出 `service/stock_ledger.py` 作为唯一结存变更入口；出库锁结存校验可用量、调拨两仓各写 TRANSFER_OUT/IN 并生成出/入库单、盘点差异写 STOCKTAKE_GAIN/LOSS；`reverse` 红冲（REVERSAL 反向流水）；43 条测试（SQLite + PG 双跑）
 - [x] **M2-d 库存预警 / 日结存快照 / 供货价**：`stock_alert`/`inventory_snapshot_daily`/`material_supplier_price` ORM + 迁移 `0006_ledger`；预警扫描（零库存/低库存/超储/临期/过期，未关闭去重）+ ack/resolve/ignore；日快照 upsert（物资×仓库×日，含在途）；供货价 CRUD + 优先供应商唯一；50 条测试（SQLite + PG 双跑）
+- [x] **M3 模拟数据生成 + 需求预测基线（ml/）**：冻结 `GeneratorConfig`（seed/skus/years、Bernoulli–Gamma、对数正态提前期）；新增 `ml/erp_ml`（config/catalog/demand/series/metrics/models/backtest/artifacts/generate/baseline）与项目内隔离 `ml/.venv`；`make gen-data` 生成 800 SKU×3 年（1095 天、876,000 行）日需求 → `data/seed_1/`（parquet/csv/json，不进 git）；实测 ADI/CV² 四象限 43.2%/24.4%/23.8%/8.6%（平滑/波动/间歇/块状）；`make baseline` 用 Naive/季节 Naive/MA7/MA28/ETS 做 3 seed × 每 seed 分层 100 序列 × horizon 7/14/30 的 expanding-window rolling-origin 回测 → `ml/results/runs/20260919-0031_m3-baseline/`；`make verify` 第 7 项（ml ruff + 14 条测试）转为真检查
 
 ## 进行中
 
@@ -28,11 +29,11 @@
 
 ## 下一步（只做这一条）
 
-**M3：模拟数据生成 + 需求预测基线（ml/）** —— 冻结生成器参数（seed/skus/years、Bernoulli–Gamma、对数正态提前期），
-实现 `ml/erp_ml/generate`（**只读业务库、不写业务表**，结果落 `data/`，不进 git）并构建需求序列与分层（ADI、CV²、Syntetos–Boylan），
-跑通 `make gen-data`；给出 Naive/MA/ETS 等预测基线的滚动回测结果表（落 `ml/results/`）。开工先加载 `forecast-experiment` 技能按协议执行。
+**M4：特征工程 + LightGBM（并补 ARIMA/Croston 分层映射）** —— 在 `ml/erp_ml` 增加滞后/滑动/日历特征与 LightGBM 训练，
+按 ADI/CV² 象限做模型映射（平滑/波动 → LightGBM，间歇 → Croston），复用 M3 的 rolling-origin 与 sMAPE/MASE 指标；
+结果继续落 `ml/results/`。开工先加载 `forecast-experiment` 技能按协议执行。
 
-> ⚠️ **开工 M3 前请先换一个新对话框**（本会话上下文已很长）。新会话从 `AGENTS.md` → `docs/progress.md` 继续即可，**不要在本会话里直接开 M3**。
+> ⚠️ **开工 M4 前请先换一个新对话框**（本会话上下文已很长）。新会话从 `AGENTS.md` → `docs/progress.md` 继续即可，**不要在本会话里直接开 M4**。
 
 ## 已知坑 / 未决问题
 
@@ -51,7 +52,10 @@
 | users/部门/默认批次 | `users` 复数命名、`dept_name` 文本、非批次用 `__DEFAULT__` 批次 | 已确认（Q1–Q3 采纳建议） |
 | M1-b 开放问题 | M1B-Q1–Q7 见 `docs/db-schema.md` §15 | 已确认（采纳建议） |
 | 预测与业务的边界 | ML 只读业务库、只写 `forecast_*` 与建议表 | 已写入 AGENTS.md |
-| 数据生成器参数 | Bernoulli–Gamma / 对数正态提前期等参数待冻结 | M3 前定稿 |
+| ML 运行环境 | `ml/.venv` 项目内隔离（Python 3.13，约 676MB）；沙箱下 `/dev/shm` 不可写 → joblib 自动退化串行（多进程不可用，代码为 joblib 并行就绪） | M3 记录 |
+| 基线回测算力 | ETS（`estimated`+`optimized`）约 4.8s/序列；3 seed×100 序列全量约 25min；`make baseline` 固定 `--seeds 1 2 3 --max-series 100` | M3 记录 |
+| 分层用全期观测 | ADI/CV² 用**全期**观测计算，仅用于分层报告/抽样，**不作预测特征**（避免未来信息泄漏） | M3 记录 |
+| 数据生成器参数 | Bernoulli–Gamma / 对数正态提前期等参数已在 M3 冻结（`ml/erp_ml/config.py::GeneratorConfig`，见 `ml/README.md`） | 已冻结（2026-09-19） |
 | 服务水平定义 | CSL 还是 Fill Rate？**全程必须一致** | M5 前定稿（`service_level_type` 承载） |
 
 ## 对账状态（库存相关改动必填）
@@ -64,3 +68,4 @@
 | 2026-09-18 | M2-b 库存过账对账：①批次汇总 == 结存 ②流水汇总 == 结存 ③批次级流水 == 批次结存 ④无负结存/锁定超结存 | `reconcile.ok=true`；覆盖默认批次与批次物资；SQLite + PostgreSQL 双跑 34 passed |
 | 2026-09-18 | M2-c 库存作业对账：出库/调拨/盘点过账与红冲后 ①批次==结存 ②流水==结存 ③批次级==流水 | `reconcile.ok=true`；出库可用量拦截、调拨两仓净额 0、盘点差异、红冲回滚均有测试；SQLite + PG 43 passed |
 | 2026-09-18 | M2-d 预警/快照只读结存，不写 `inventory`/`inventory_transaction` | 不涉及结存变更；日快照 upsert 与实际结存一致，预警扫描可重复执行不产生重复 |
+| 2026-09-19 | M3 数据生成只写 `data/`，预测只读业务库且只写 `ml/results/`；未触及 `inventory`/`inventory_transaction`/`forecast_*` | 不涉及结存变更；业务表零写入 |

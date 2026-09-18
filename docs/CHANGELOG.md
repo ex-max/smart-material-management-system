@@ -105,6 +105,17 @@
 - **回滚**：`git revert <本次提交>`；若已建表，`alembic downgrade 0005_inventory_ops`。
 - **备注**：快照 `in_transit_qty` 暂取物料级在途（PO 无仓库维度），已记录口径；供货价暂为单条当前价（历史版本化见 `docs/db-schema.md` §15-Q3）。
 
+## 2026-09-19 · 模拟数据生成 + 需求预测基线（M3）
+
+- **改动**：
+  - 新增 `ml/` 完整模块（独立 `ml/.venv`，项目内隔离）：`erp_ml/config.py`（冻结 `GeneratorConfig`/`BacktestConfig`）、`catalog.py`（合成目录 + 业务库**只读**主数据，空库自动回退）、`demand.py`（月季节 + 周内 + 事件冲击，Bernoulli–Gamma 四象限，对数正态提前期）、`series.py`（ADI/CV² Syntetos–Boylan 分层 + ABC）、`metrics.py`（MAE/RMSE/sMAPE/MASE）、`models.py`（Naive/季节 Naive/MA7/MA28/ETS）、`backtest.py`（expanding-window rolling-origin，joblib 并行）、`artifacts.py`、`generate.py`、`baseline.py` 与 `tests/`（14 条）。
+  - `Makefile` 新增 `baseline`/`ml-venv`/`ml-test`/`ml-lint`，`gen-data` 改用 `ml/.venv`；`scripts/verify.sh` 新增第 7 项 ML lint + 测试（门禁随模块落地自动变严）。
+  - 生成数据落 `data/seed_1/`（`demand_daily.parquet`、`lead_times.parquet`、`demand_meta.csv`、`catalog_*.csv`、`data_version.json`）；实验结果落 `ml/results/runs/20260919-0031_m3-baseline/`（`config.json`/`metrics.csv`/`summary.csv`/`segments.csv`/`figures/*.png`）。两者均不进 git。
+- **原因**：`docs/progress.md` 的“下一步” M3 —— 冻结生成器参数、实现 `ml/erp_ml/generate`（只读业务库、不写业务表）、构建需求序列与 ADI/CV² 分层、跑通 `make gen-data`，并给出 Naive/MA/ETS 等基线滚动回测表。
+- **验证**：`make verify` 绿（后端 50 passed、ml ruff 通过、ml pytest 14 passed、迁移链 1155 行、不变量检查通过）。`make gen-data` → 800 SKU×3 年（876,000 行），实测四象限 43.2/24.4/23.8/8.6%。`make baseline`（seeds 1–3 × 每 seed 分层 100 序列 × horizon 7/14/30）—— horizon=7 sMAPE：ETS 对 SMOOTH 最优（19.81% vs 季节 Naive 23.96%），Naive 对间歇/块状最优（105.95%/79.77%），总体 MASE：MA28 0.870 / ETS 0.879 / Naive 1.059。
+- **回滚**：`git revert <本次提交>`（删除新增 `ml/` 代码与 Makefile/verify 改动即可；`data/`、`ml/results/`、`ml/.venv` 均不入库）。
+- **备注**：沙箱 `/dev/shm` 不可写 → joblib 检测不到命名信号量并退化串行（代码为 joblib 并行就绪）；ETS 单序列约 4.8s，故默认回测规模取 3 seed×100 序列。`config.json` 的 `code_commit` 记录运行时的基线提交 `af6a127`，结果对应 M3 工作区。
+
 
 
 
