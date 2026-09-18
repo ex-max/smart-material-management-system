@@ -79,4 +79,19 @@
 - **回滚**：`git revert <本次提交>`；若已建表，`alembic downgrade 0003_procurement`；数据库实例 `docker compose -f deploy/docker-compose.yml down`（保留卷）。
 - **备注**：冻结状态机下已过账单据不可作废，故本期无 `REVERSAL` 红冲路径（随 M2-c 出库/盘点实现）。
 
+## 2026-09-18 · 出库 / 调拨 / 盘点 + 红冲（M2-c）
+
+- **改动**：
+  - 新增 `backend/app/model/inventory_ops.py`：`outbound_order`/`outbound_item`、`transfer_order`/`transfer_item`、`stocktake_order`/`stocktake_item`；`inbound_order` 补 `transfer_order_id`。
+  - 新增迁移 `0005_inventory_ops`（含完整 downgrade 与给 `inbound_order` 加列/索引）。
+  - 抽出 `backend/app/service/stock_ledger.py`：唯一允许改结存的位置（锁行 + 同事务写流水）；入库过账改为调用它。
+  - 新增 `repository`/`schema`/`service`/`api`：出库（建单/过账/完成/作废/红冲；过账校验可用量，批次物资必须指定批次）、调拨（过账生成源仓出库 + 目标仓入库并各写 TRANSFER_OUT/IN，红冲两仓回滚并红冲生成的单据）、盘点（`start` 快照 book_qty、`counts` 录实盘、`complete` 按差异写 STOCKTAKE_GAIN/LOSS、`reverse` 红冲）。
+  - 状态机新增 `REVERSE`（红冲）动作：库存类单据 IN_PROGRESS/COMPLETED → CANCELLED；采购入库（delivery 来源）红冲被服务层拒绝。
+  - 测试：新增 `tests/test_inventory_ops.py`（9 条）；`conftest` 增加每请求回滚以贴合生产。
+- **原因**：progress 的“下一步” M2-c —— 落地 `docs/db-schema.md` §5.3–§5.8 与红冲规则（§1.6 规则 3、erp-db-migration checklist）。
+- **验证**：`make verify` 绿（ruff 通过；`pytest 43 passed`；迁移链 1052 行；不变量检查通过）。真库：PG16 双跑 43 passed，暴露并修复 `outbound_order.source_type varchar(16)` 放不下 `REQUISITION_ISSUE`(17)（改 32，同步 `docs/db-schema.md` §5.3）；对账 `reconcile.ok=true`。
+- **回滚**：`git revert <本次提交>`；若已建表，`alembic downgrade 0004_inventory_inbound`。
+- **备注**：采购入库红冲（需回滚 PO/到货）留后续；`stock_alert`/`inventory_snapshot_daily`/`material_supplier_price` 留 M2-d。
+
+
 

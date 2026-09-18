@@ -43,8 +43,8 @@ def test_every_edge_has_permission_and_valid_states():
             assert transition.from_states
             for state in transition.from_states:
                 assert state in ALL_STATUSES
-                # 终态不可作为任何迁移的来源态
-                assert not is_terminal(state), state
+                # 终态不可作为来源态，唯一例外是红冲（REVERSE）
+                assert (not is_terminal(state)) or transition.action == Actions.REVERSE, state
 
 
 def test_apply_transition_advances_and_rejects_invalid():

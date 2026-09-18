@@ -16,6 +16,7 @@ _VIEW = require_perm(Perm.INVENTORY_VIEW)
 _INBOUND_POST = require_perm(get_transition(DocTypes.INBOUND_ORDER, Actions.START).permission)
 _INBOUND_COMPLETE = require_perm(get_transition(DocTypes.INBOUND_ORDER, Actions.COMPLETE).permission)
 _INBOUND_CANCEL = require_perm(get_transition(DocTypes.INBOUND_ORDER, Actions.CANCEL).permission)
+_INBOUND_REVERSE = require_perm(get_transition(DocTypes.INBOUND_ORDER, Actions.REVERSE).permission)
 
 
 # ---------------- 库存查询 ----------------
@@ -90,6 +91,17 @@ def post_inbound_order(inbound_id: int, user: User = Depends(_INBOUND_POST), db:
 @router.post("/inbound-orders/{inbound_id}/complete", name="complete_inbound_order")
 def complete_inbound_order(inbound_id: int, user: User = Depends(_INBOUND_COMPLETE), db: Session = Depends(get_db)):
     return ok(ivs.InboundOrderOut.model_validate(InboundService(db).complete(inbound_id)).model_dump())
+
+
+@router.post("/inbound-orders/{inbound_id}/reverse", name="reverse_inbound_order")
+def reverse_inbound_order(
+    inbound_id: int,
+    payload: dict | None = None,
+    user: User = Depends(_INBOUND_REVERSE),
+    db: Session = Depends(get_db),
+):
+    reason = payload.get("reason") if payload else None
+    return ok(ivs.InboundOrderOut.model_validate(InboundService(db).reverse(inbound_id, user.id, reason)).model_dump())
 
 
 @router.post("/inbound-orders/{inbound_id}/cancel", name="cancel_inbound_order")

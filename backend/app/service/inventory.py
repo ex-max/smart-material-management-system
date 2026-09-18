@@ -4,7 +4,6 @@
 的地方，且每条结存变更都必须在同一事务内写一条 inventory_transaction。
 """
 
-from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy.orm import Session
@@ -12,14 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import BadRequest, NotFound
 from app.core.state_machine import Actions, DocStatus, DocTypes, apply_transition, can, require_transition
 from app.model.base import utcnow
-from app.model.inventory import (
-    BATCH_DEFAULT_NO,
-    InboundItem,
-    InboundOrder,
-    Inventory,
-    InventoryBatch,
-    InventoryTransaction,
-)
+from app.model.inventory import BATCH_DEFAULT_NO, InboundItem, InboundOrder
 from app.model.purchase import POItem
 from app.repository.inventory import (
     InboundItemRepo,
@@ -29,8 +21,9 @@ from app.repository.inventory import (
     InventoryRepo,
     InventoryTransactionRepo,
 )
-from app.repository.master import LocationRepo, MaterialRepo, WarehouseRepo
+from app.repository.master import LocationRepo, WarehouseRepo
 from app.repository.purchase import POItemRepo, PurchaseOrderRepo, SupplierDeliveryItemRepo, SupplierDeliveryRepo
+from app.service.stock_ledger import StockLedger
 
 _MONEY = Decimal("0.0001")
 _SNAPSHOT_FIELDS = ("material_id", "material_code", "material_name", "spec", "unit_name")
@@ -184,6 +177,36 @@ class InboundService:
         self.db.refresh(inbound)
         return inbound
 
+    def reverse(self, inbound_id: int, operator_id: int, reason: str | None) -> InboundOrder:
+        """红冲已过账入库：写反向流水。采购入库涉及 PO/到货回滚，不允许直接反向。"""
+        inbound = self.get(inbound_id)
+        if inbound.delivery_id is not None:
+            raise BadRequest("采购入库的红冲需通过采购/退货流程处理，不能直接反向")
+        require_transition(self.doc_type, Actions.REVERSE, inbound.status)
+        ledger = StockLedger(self.db)
+        for item in inbound.items:
+            ledger.change(
+                key="INBOUND_REV:%d:%d" % (inbound.id, item.line_no),
+                material_id=item.material_id,
+                warehouse_id=inbound.warehouse_id,
+                delta=-item.quantity,
+                txn_type="REVERSAL",
+                source_type="INBOUND",
+                source_id=inbound.id,
+                source_no=inbound.doc_no,
+                source_line_id=item.id,
+                operator_id=operator_id,
+                unit_price=item.unit_price,
+                amount=item.amount,
+                batch_id=item.batch_id,
+                batch_no=item.batch_no or BATCH_DEFAULT_NO,
+            )
+        apply_transition(inbound, self.doc_type, Actions.REVERSE)
+        inbound.cancel_reason = reason
+        self.db.commit()
+        self.db.refresh(inbound)
+        return inbound
+
     def cancel(self, inbound_id: int, reason: str | None) -> InboundOrder:
         inbound = self.get(inbound_id)
         apply_transition(inbound, self.doc_type, Actions.CANCEL)
@@ -193,67 +216,24 @@ class InboundService:
         return inbound
 
     def _stock_in(self, inbound: InboundOrder, item: InboundItem, operator_id: int) -> None:
-        material_id = item.material_id
-        warehouse_id = inbound.warehouse_id
-        batch_no = item.batch_no or BATCH_DEFAULT_NO
-        qty = item.quantity
-
-        batch_repo = InventoryBatchRepo(self.db)
-        batch = batch_repo.get_grain(material_id, warehouse_id, batch_no, for_update=True)
-        if batch is None:
-            MaterialRepo(self.db).get(material_id)  # 外键校验（缺失时 DB 会报错，这里提前 400）
-            batch = InventoryBatch(
-                material_id=material_id,
-                warehouse_id=warehouse_id,
-                batch_no=batch_no,
-                is_default=batch_no == BATCH_DEFAULT_NO,
-                production_date=item.production_date,
-                expiry_date=item.expiry_date,
-                inbound_date=date.today(),
-                quantity=Decimal("0"),
-                status="NORMAL",
-                created_by=operator_id,
-            )
-            batch_repo.add(batch)
-        batch.quantity = batch.quantity + qty
-        if batch.inbound_date is None:
-            batch.inbound_date = date.today()
-        item.batch_id = batch.id
-
-        inventory_repo = InventoryRepo(self.db)
-        inventory = inventory_repo.get_grain(material_id, warehouse_id, for_update=True)
-        if inventory is None:
-            inventory = Inventory(
-                material_id=material_id,
-                warehouse_id=warehouse_id,
-                quantity=Decimal("0"),
-                locked_qty=Decimal("0"),
-                version=0,
-                created_by=operator_id,
-            )
-            inventory_repo.add(inventory)
-        inventory.quantity = inventory.quantity + qty
-        inventory.version = inventory.version + 1
-        inventory.last_txn_at = utcnow()
-
-        InventoryTransactionRepo(self.db).add(
-            InventoryTransaction(
-                idem_key="INBOUND:%d:%d" % (inbound.id, item.line_no),
-                material_id=material_id,
-                warehouse_id=warehouse_id,
-                batch_id=batch.id,
-                quantity=qty,
-                txn_type="INBOUND",
-                source_type="INBOUND",
-                source_id=inbound.id,
-                source_no=inbound.doc_no,
-                source_line_id=item.id,
-                balance_after=batch.quantity,
-                unit_price=item.unit_price,
-                amount=item.amount,
-                created_by=operator_id,
-            )
+        batch = StockLedger(self.db).change(
+            key="INBOUND:%d:%d" % (inbound.id, item.line_no),
+            material_id=item.material_id,
+            warehouse_id=inbound.warehouse_id,
+            delta=item.quantity,
+            txn_type="INBOUND",
+            source_type="INBOUND",
+            source_id=inbound.id,
+            source_no=inbound.doc_no,
+            source_line_id=item.id,
+            operator_id=operator_id,
+            unit_price=item.unit_price,
+            amount=item.amount,
+            batch_no=item.batch_no or BATCH_DEFAULT_NO,
+            production_date=item.production_date,
+            expiry_date=item.expiry_date,
         )
+        item.batch_id = batch.id
 
     def _sync_po_status(self, po_id: int) -> None:
         po = PurchaseOrderRepo(self.db).get_active(po_id)

@@ -7,6 +7,14 @@ from app.model.inventory import (
     InventoryBatch,
     InventoryTransaction,
 )
+from app.model.inventory_ops import (
+    OutboundItem,
+    OutboundOrder,
+    StocktakeItem,
+    StocktakeOrder,
+    TransferItem,
+    TransferOrder,
+)
 from app.model.master import Location, Material, MaterialCategory, Supplier, Unit, Warehouse
 from app.model.purchase import (
     POItem,
@@ -40,6 +48,12 @@ __all__ = [
     "Inventory",
     "InventoryBatch",
     "InventoryTransaction",
+    "OutboundItem",
+    "OutboundOrder",
+    "StocktakeItem",
+    "StocktakeOrder",
+    "TransferItem",
+    "TransferOrder",
     "OperationLog",
     "Permission",
     "Role",

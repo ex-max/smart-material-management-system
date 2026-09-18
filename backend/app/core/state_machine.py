@@ -53,6 +53,7 @@ class Actions:
     APPROVE = "approve"
     ACCEPT = "accept"
     CONFIRM = "confirm"
+    REVERSE = "reverse"
     START = "start"
     COMPLETE = "complete"
     CANCEL = "cancel"
@@ -119,21 +120,25 @@ DOC_FLOWS: dict[str, dict[str, Transition]] = {
         Actions.START: _t(Actions.START, DocStatus.IN_PROGRESS, _DRAFT_ONLY, _INV_MANAGE, "执行过账"),
         Actions.COMPLETE: _t(Actions.COMPLETE, DocStatus.COMPLETED, (DocStatus.IN_PROGRESS,), _INV_MANAGE, "完成"),
         Actions.CANCEL: _t(Actions.CANCEL, DocStatus.CANCELLED, _DRAFT_ONLY, _INV_MANAGE, "作废"),
+        Actions.REVERSE: _t(Actions.REVERSE, DocStatus.CANCELLED, (DocStatus.IN_PROGRESS, DocStatus.COMPLETED), _INV_MANAGE, "红冲作废"),
     },
     DocTypes.OUTBOUND_ORDER: {
         Actions.START: _t(Actions.START, DocStatus.IN_PROGRESS, _DRAFT_ONLY, _INV_MANAGE, "执行过账"),
         Actions.COMPLETE: _t(Actions.COMPLETE, DocStatus.COMPLETED, (DocStatus.IN_PROGRESS,), _INV_MANAGE, "完成"),
         Actions.CANCEL: _t(Actions.CANCEL, DocStatus.CANCELLED, _DRAFT_ONLY, _INV_MANAGE, "作废"),
+        Actions.REVERSE: _t(Actions.REVERSE, DocStatus.CANCELLED, (DocStatus.IN_PROGRESS, DocStatus.COMPLETED), _INV_MANAGE, "红冲作废"),
     },
     DocTypes.TRANSFER_ORDER: {
         Actions.START: _t(Actions.START, DocStatus.IN_PROGRESS, _DRAFT_ONLY, _INV_MANAGE, "执行过账"),
         Actions.COMPLETE: _t(Actions.COMPLETE, DocStatus.COMPLETED, (DocStatus.IN_PROGRESS,), _INV_MANAGE, "完成"),
         Actions.CANCEL: _t(Actions.CANCEL, DocStatus.CANCELLED, _DRAFT_ONLY, _INV_MANAGE, "作废"),
+        Actions.REVERSE: _t(Actions.REVERSE, DocStatus.CANCELLED, (DocStatus.IN_PROGRESS, DocStatus.COMPLETED), _INV_MANAGE, "红冲作废"),
     },
     DocTypes.STOCKTAKE_ORDER: {
         Actions.START: _t(Actions.START, DocStatus.IN_PROGRESS, _DRAFT_ONLY, _INV_MANAGE, "执行过账"),
         Actions.COMPLETE: _t(Actions.COMPLETE, DocStatus.COMPLETED, (DocStatus.IN_PROGRESS,), _INV_MANAGE, "完成"),
         Actions.CANCEL: _t(Actions.CANCEL, DocStatus.CANCELLED, _DRAFT_ONLY, _INV_MANAGE, "作废"),
+        Actions.REVERSE: _t(Actions.REVERSE, DocStatus.CANCELLED, (DocStatus.IN_PROGRESS, DocStatus.COMPLETED), _INV_MANAGE, "红冲作废"),
     },
 }
 

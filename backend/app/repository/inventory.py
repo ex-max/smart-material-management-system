@@ -137,6 +137,12 @@ class InboundOrderRepo(DocRepo):
     model = InboundOrder
     doc_prefix = "IN"
 
+    def find_by_transfer(self, transfer_id: int) -> InboundOrder | None:
+        stmt = select(InboundOrder).where(
+            InboundOrder.transfer_order_id == transfer_id, InboundOrder.deleted_at.is_(None)
+        )
+        return self.db.execute(stmt).scalar_one_or_none()
+
 
 class InboundItemRepo:
     def __init__(self, db) -> None:

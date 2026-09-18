@@ -42,7 +42,11 @@ def db_session():
 @pytest.fixture()
 def client(db_session):
     def _override():
-        yield db_session
+        # 与生产一致：请求结束回滚未提交改动（成功路径已在 service 内 commit）
+        try:
+            yield db_session
+        finally:
+            db_session.rollback()
 
     fastapi_app.dependency_overrides[get_db] = _override
     with TestClient(fastapi_app) as test_client:

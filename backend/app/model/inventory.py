@@ -183,6 +183,9 @@ class InboundOrder(Base, AuditMixin):
     delivery_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("supplier_delivery.id", ondelete="RESTRICT")
     )
+    transfer_order_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("transfer_order.id", ondelete="RESTRICT")
+    )
     warehouse_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("warehouse.id", ondelete="RESTRICT"), nullable=False
     )
@@ -213,6 +216,7 @@ class InboundOrder(Base, AuditMixin):
         Index("ix_inbound_order_warehouse_id", "warehouse_id"),
         Index("ix_inbound_order_status", "status"),
         Index("ix_inbound_order_delivery_id", "delivery_id"),
+        Index("ix_inbound_order_transfer_order_id", "transfer_order_id"),
         Index("ix_inbound_order_source", "source_type", "source_id"),
     )
 

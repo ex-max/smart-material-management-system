@@ -56,8 +56,8 @@ for doc_type, flow in DOC_FLOWS.items():
         for state in transition.from_states:
             check(state in ALL_STATUSES, "%s 来源态非法：%s" % (doc_type, state))
             check(
-                not is_terminal(state),
-                "%s/%s 从终态 %s 出发（终态不可迁移）" % (doc_type, transition.action, state),
+                not is_terminal(state) or transition.action == Actions.REVERSE,
+                "%s/%s 从终态 %s 出发（只有红冲可离开终态）" % (doc_type, transition.action, state),
             )
 check(
     set(approve_owners) == {DocTypes.PURCHASE_REQUISITION},
@@ -86,16 +86,17 @@ check(not hasattr(InventoryTransaction, "updated_at"), "inventory_transaction �
 
 BALANCE_ASSIGN = re.compile(r"\.(quantity|locked_qty)\s*=(?!=)")
 service_dir = ROOT / "backend" / "app" / "service"
+LEDGER = "stock_ledger.py"
 for path in sorted(service_dir.glob("*.py")):
-    if path.name == "inventory.py":
+    if path.name == LEDGER:
         continue
     for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         if BALANCE_ASSIGN.search(line):
-            FAILURES.append("%s:%d 直接改结存数量（只能由 service/inventory.py 过账）" % (path.name, lineno))
+            FAILURES.append("%s:%d 直接改结存数量（只能由 service/%s 过账）" % (path.name, lineno, LEDGER))
 
-inv_text = (service_dir / "inventory.py").read_text(encoding="utf-8")
-check("InventoryTransaction(" in inv_text, "库存过账必须在同一事务内写 inventory_transaction")
-check("for_update=True" in inv_text, "库存结存变更必须先 SELECT ... FOR UPDATE 锁行")
+ledger_text = (service_dir / LEDGER).read_text(encoding="utf-8")
+check("InventoryTransaction(" in ledger_text, "库存过账必须在同一事务内写 inventory_transaction")
+check("for_update=True" in ledger_text, "库存结存变更必须先 SELECT ... FOR UPDATE 锁行")
 
 if FAILURES:
     print("领域不变量检查失败：")

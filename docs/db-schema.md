@@ -552,7 +552,7 @@ DRAFT ──提交──▶ PENDING ──审核──▶ APPROVED ──执行�
 |---|---|---|---|
 | id | bigint | PK identity | |
 | doc_no | varchar(32) | NOT NULL | 单号 OUT-YYYYMMDD-#### |
-| source_type | varchar(16) | NOT NULL, CHECK IN ('REQUISITION_ISSUE','TRANSFER','SCRAP','OTHER') | 领用出库/调拨出库/报废/其他 |
+| source_type | varchar(32) | NOT NULL, CHECK IN ('REQUISITION_ISSUE','TRANSFER','SCRAP','OTHER') | 领用出库/调拨出库/报废/其他（M2-c 修正：REQUISITION_ISSUE 长 17，原 varchar(16) 放不下，列宽改 32） |
 | source_id | bigint | NULL | 多态来源 id |
 | transfer_order_id | bigint | NULL, FK→transfer_order RESTRICT | 调拨出库来源 |
 | warehouse_id | bigint | NOT NULL, FK→warehouse RESTRICT | 出库仓库 |
