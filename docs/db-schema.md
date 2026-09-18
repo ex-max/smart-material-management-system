@@ -1341,15 +1341,17 @@ SELECT * FROM inventory WHERE quantity < 0 OR quantity < locked_qty;
 
 ---
 
-## 15. 剩余开放问题（M1-b，评审逐条拍板；下列均附建议）
+## 15. 开放问题与已定结论（M1-b 评审通过：全部采纳建议）
 
-| # | 问题 | 建议 | 状态 |
-|---|---|---|---|
-| M1B-Q1 | 是否做数据范围权限（按仓库/部门行级隔离） | 本期只做功能权限 RBAC（MENU/API/BUTTON）；DATA 类型权限码预留，不做行级隔离 | 待评审 |
-| M1B-Q2 | 服务水平口径 CSL / Fill Rate | 由 replenishment_policy.service_level_type 承载；M5 前定稿并全程一致 | 待评审（M5 定稿） |
-| M1B-Q3 | 供货价是否历史版本化 | 本期单条当前价（valid_from/valid_to 预留）；需要历史再加价格历史表 | 待评审 |
-| M1B-Q4 | 日快照保留期 | 建议 3 年（与生成数据一致），超期归档 | 待评审 |
-| M1B-Q5 | 附件存储 | 本期本地磁盘（storage=LOCAL + 相对路径），后续可换对象存储 | 待评审 |
-| M1B-Q6 | operation_log 保留/清理 | 建议按年归档、不物理删除 | 待评审 |
-| M1B-Q7 | dict 与代码枚举边界 | 业务枚举以代码常量 + 列 CHECK 为单一事实源；dict 仅展示型 | 待评审 |
+| # | 问题 | 结论（已采纳，实现按此） |
+|---|---|---|
+| M1B-Q1 | 数据范围权限 | 本期只做功能权限 RBAC（MENU/API/BUTTON）；DATA 类型权限码仅预留，不做行级隔离 |
+| M1B-Q2 | 服务水平口径 CSL / Fill Rate | 由 replenishment_policy.service_level_type 承载；M5 前定稿并全程一致 |
+| M1B-Q3 | 供货价历史版本化 | 本期单条当前价（valid_from/valid_to 预留）；需要历史再加价格历史表 |
+| M1B-Q4 | 日快照保留期 | 3 年（与生成数据一致），超期归档 |
+| M1B-Q5 | 附件存储 | 本期本地磁盘（storage=LOCAL + 相对路径），后续可换对象存储 |
+| M1B-Q6 | operation_log 保留/清理 | 按年归档、不物理删除 |
+| M1B-Q7 | dict 与代码枚举边界 | 业务枚举以代码常量 + 列 CHECK 为单一事实源；dict 仅展示型 |
+
+> 结论已同步到 docs/progress.md 的“已知坑 / 未决问题”。
 

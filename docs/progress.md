@@ -39,7 +39,7 @@
 | 非批次物资默认批次 | `batch_no='__DEFAULT__'` + `is_default`，batch_id 非空 | 已确认（Q2，采纳建议） |
 | users 表命名 | 用 `users` 而非 `user`（PostgreSQL 保留字） | 已确认（Q1，采纳建议） |
 | 部门主数据 | 方案无 dept 表，暂用 `dept_name` 文本 | 已确认（Q3，采纳建议） |
-| M1-b 开放问题 | M1B-Q1–Q7（数据范围权限 / 服务水平口径 CSL vs Fill Rate / 价格历史 / 快照保留期 / 附件存储 / 日志归档 / dict 边界）见 `docs/db-schema.md` §15，均附建议 | 待评审 |
+| M1-b 开放问题 | M1B-Q1–Q7（数据范围权限 / 服务水平口径 CSL vs Fill Rate / 价格历史 / 快照保留期 / 附件存储 / 日志归档 / dict 边界）见 `docs/db-schema.md` §15 | 已确认（采纳建议） |
 | 预测与业务的边界 | ML 只读业务库、只写 `forecast_*` 与建议表 | 已写入 AGENTS.md |
 | 数据生成器参数 | Bernoulli–Gamma / 对数正态提前期等参数待冻结 | M3 前定稿 |
 | 服务水平定义 | CSL 还是 Fill Rate？**全程必须一致** | M5 前定稿（表中已用 `service_level_type` 承载） |
