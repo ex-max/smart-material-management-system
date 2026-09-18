@@ -93,5 +93,18 @@
 - **回滚**：`git revert <本次提交>`；若已建表，`alembic downgrade 0004_inventory_inbound`。
 - **备注**：采购入库红冲（需回滚 PO/到货）留后续；`stock_alert`/`inventory_snapshot_daily`/`material_supplier_price` 留 M2-d。
 
+## 2026-09-18 · 库存预警 / 日结存快照 / 供货价（M2-d）
+
+- **改动**：
+  - 新增 `backend/app/model/ledger.py`：`stock_alert`（未关闭去重为 COALESCE 表达式部分唯一索引）、`inventory_snapshot_daily`、`material_supplier_price`（每物料至多一个优先供应商）；迁移 `0006_ledger`（含完整 downgrade）。
+  - 新增 `repository`/`schema`/`service`/`api`：预警扫描（零库存/低库存/超储/临期/过期；OPEN/ACKED 去重）+ ack/resolve/ignore；日快照 upsert（物资×仓库×日，含 `in_transit_qty`）；供货价 CRUD + 优先供应商自动切换。
+  - `scripts/check_invariants.py` 扩展：台账三表就位、快照表不软删；结存直改检查收窄到结存对象变量（避免快照 `row.quantity` 误报）。
+  - **规则**：`AGENTS.md` 硬规则新增"服务器缺环境→自行安装"，并同步 `server-ops` 技能与 `/root/dsh/SERVER-OPS-RULES.md`（运维侧记录见 `/root/dsh/CHANGELOG-ops.md`）。
+- **原因**：progress 的“下一步” M2-d —— 落地 `docs/db-schema.md` §11.3–§11.5，为 M3 预测提供日序列与预警/价格基础。
+- **验证**：`make verify` 绿（ruff 通过；`pytest 50 passed`；迁移链可解析；不变量检查通过）。真库：PG16 双跑 50 passed；确认 `uq_stock_alert_open` 为 `COALESCE(...)` 表达式部分唯一索引。
+- **回滚**：`git revert <本次提交>`；若已建表，`alembic downgrade 0005_inventory_ops`。
+- **备注**：快照 `in_transit_qty` 暂取物料级在途（PO 无仓库维度），已记录口径；供货价暂为单条当前价（历史版本化见 `docs/db-schema.md` §15-Q3）。
+
+
 
 

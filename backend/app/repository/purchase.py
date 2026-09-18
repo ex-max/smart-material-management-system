@@ -109,6 +109,22 @@ class POItemRepo:
         stmt = select(POItem).where(POItem.po_id == po_id).order_by(POItem.line_no)
         return list(self.db.execute(stmt).scalars().all())
 
+    def in_transit_by_material(self) -> dict[int, object]:
+        """在途量 = 已确认/执行中采购订单的 SUM(quantity - received_qty)，按物资汇总。"""
+        stmt = (
+            select(
+                POItem.material_id,
+                func.coalesce(func.sum(POItem.quantity - POItem.received_qty), 0),
+            )
+            .join(PurchaseOrder, PurchaseOrder.id == POItem.po_id)
+            .where(
+                PurchaseOrder.deleted_at.is_(None),
+                PurchaseOrder.status.in_(("APPROVED", "IN_PROGRESS")),
+            )
+            .group_by(POItem.material_id)
+        )
+        return {material_id: total for material_id, total in self.db.execute(stmt).all()}
+
 
 class SupplierDeliveryRepo(DocRepo):
     model = SupplierDelivery

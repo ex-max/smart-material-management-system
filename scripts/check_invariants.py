@@ -25,6 +25,7 @@ from app.core.state_machine import (  # noqa: E402
     is_terminal,
 )
 from app.model.inventory import Inventory, InventoryBatch, InventoryTransaction  # noqa: E402
+from app.model.ledger import InventorySnapshotDaily, MaterialSupplierPrice, StockAlert  # noqa: E402
 
 FAILURES: list[str] = []
 
@@ -83,8 +84,16 @@ for model, table in (
     check(model.__tablename__ == table, "%s 表名错误：%s" % (table, model.__tablename__))
 check(not hasattr(InventoryTransaction, "deleted_at"), "inventory_transaction 不得软删（只 INSERT）")
 check(not hasattr(InventoryTransaction, "updated_at"), "inventory_transaction 不得更新（只 INSERT）")
+check(not hasattr(InventorySnapshotDaily, "deleted_at"), "inventory_snapshot_daily 不得软删（可重算 upsert）")
+for model, table in (
+    (StockAlert, "stock_alert"),
+    (InventorySnapshotDaily, "inventory_snapshot_daily"),
+    (MaterialSupplierPrice, "material_supplier_price"),
+):
+    check(model.__tablename__ == table, "%s 表名错误：%s" % (table, model.__tablename__))
 
-BALANCE_ASSIGN = re.compile(r"\.(quantity|locked_qty)\s*=(?!=)")
+# 启发式：只盯结存对象（inventory/batch/inv）的数量赋值；快照表的 row.quantity 不算余额直改
+BALANCE_ASSIGN = re.compile(r"(?<![\w.])(inventory|batch|inv)\.(quantity|locked_qty)\s*=(?!=)")
 service_dir = ROOT / "backend" / "app" / "service"
 LEDGER = "stock_ledger.py"
 for path in sorted(service_dir.glob("*.py")):
