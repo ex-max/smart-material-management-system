@@ -42,3 +42,11 @@
 - **验证**：`make verify` 绿 —— ruff 通过；`pytest 8 passed`；`alembic upgrade head --sql` 渲染 171 行（真检查，不再是 skip）。
 - **回滚**：`git revert <本次提交>`（删除新增文件即可，无数据/迁移副作用）。
 - **备注**：本机无 PostgreSQL，测试用 SQLite 内存库；PG 实例与 `jsonb`/`postgresql_where` 行为待 `deploy/` 起独立实例后验证（已记入 progress 已知坑）。
+
+## 2026-09-18 · 主数据模块（M1-d）
+
+- **改动**：新增主数据六张表的 ORM（`app/model/master.py`）与迁移 `0002_master_data`（unit/supplier/warehouse/material_category/location/material，含 CHECK、部分唯一索引、分类树 `COALESCE(parent_id,0)+code` 唯一）；新增 `app/repository/master.py`（通用 BaseRepo + 6 个子类）、`app/schema/master.py`（18 个 DTO）、`app/service/master.py`（CrudService + 6 个实体服务，含编码唯一校验与外键存在性校验、分类 level/path 自动维护）、`app/api/v1/master.py`（6 资源 × CRUD 的注册式路由，统一用 `material:view/material:manage` 鉴权）；新增 `tests/test_master_data.py`。
+- **原因**：progress 的"下一步" M1-d —— 落地 `docs/db-schema.md` §3 主数据组，补齐 M1（物资/仓库/供应商/权限 + 登录）的后端验收。
+- **验证**：`make verify` 绿 —— ruff 通过；`pytest 12 passed`（含树形分类、唯一冲突 409、外键校验 400、软删后 404、viewer 403）；`alembic upgrade head --sql` 渲染 352 行。
+- **回滚**：`git revert <本次提交>`（无数据迁移；若已建表，alembic downgrade 到 `0001_init_org_auth`）。
+- **备注**：分类树深拷贝约束（同父下 code 唯一）在服务层与库层双重保证；未实现分页筛选与操作日志写入。
