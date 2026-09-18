@@ -44,6 +44,11 @@ make serve      # 本地起后端
 - **金额/数量用 `Decimal`**，浮点只用于预测与统计。
 - **时间统一 UTC 存储、展示按 Asia/Shanghai**；所有业务表带 `created_at/updated_at/created_by`。
 - 库存相关改动必须同时更新 `docs/progress.md` 的"对账状态"（见 `erp-db-migration` 技能）。
+- **服务器缺环境→自行安装**：项目需要的运行环境（如 PostgreSQL）服务器上没有时，**自行安装/启动，不必等用户逐条授权**；但必须按 `server-ops` 技能隔离且可回滚：
+  - 优先**项目内隔离**方案（`deploy/docker-compose.yml` 的独立容器 + 独立卷），**只监听 `127.0.0.1`**，先 `ss -lntp` 确认端口空闲，不影响既有服务；
+  - 不 `apt upgrade`、不改内核/防火墙/其他站点；不 stop / rm / prune 既有容器、不动既有 volume；
+  - 改动前后各跑一次 `/root/dsh/server-health.sh` 对比，并在 `/root/dsh/CHANGELOG-ops.md` 记录（改动/原因/验证/回滚/影响）；
+  - 连接串/端口写进 `deploy/README.md` 与 `.env.example`；新容器要加入 health 清单，避免"未在清单内"告警。
 
 ## 五、领域不变量（违反即 bug）
 
@@ -58,6 +63,7 @@ make serve      # 本地起后端
 - `erp-conventions`：命名/分层/错误码/事务与锁/提交规范
 - `erp-db-migration`：Alembic 流程 + 库存余额对账 checklist
 - `forecast-experiment`：滚动回测协议 + 结果落盘 + 表格模板
+- `server-ops`：动服务器 / 装环境 / 改配置前必读（硬边界、health 前后对比、回滚与 CHANGELOG-ops）
 
 ## 七、远程仓库与同步（每个会话收尾必做）
 
