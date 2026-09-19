@@ -41,6 +41,8 @@
 
 - [x] **M8 子切片 2：采购 / 库存前端 + 接口类型化 + 部署更新**：给 `purchase.py`/`inventory.py`/`inventory_ops.py`/`ledger.py` 四组接口补 `ApiResponse[T]`/`PageOut[T]` 的 `response_model` 并重跑 `gen:api`；新增通用单据组件 `frontend/src/components/DocumentView.vue` + `document.ts`，新增 `src/api/purchase.ts`、`src/api/inventory.ts`、`src/composables/useMasterOptions.ts`、`src/utils/{format,status}.ts`；页面：请购单 / 采购订单 / 到货验收单、库存查询（结存/批次/流水 + 一键对账）、入库 / 出库 / 调拨 / 盘点单、库存预警；侧边栏增「采购管理」「库存管理」；动作按 `purchase:*`/`inventory:*` 权限隐藏；重建 api/web 镜像并 `make up`。
 
+- [x] **现实演示数据入库**：新增 `backend/scripts/seed_demo.py` + `make seed-demo`（走 HTTP API，尊重状态机与库存不变量；主数据按编码幂等、单据以 `[DEMO]` 标记幂等）。已入库：单位 10 / 分类 21（两级树）/ 供应商 8 / 仓库 3 / 库位 10 / 物资 26；请购单 7、采购订单 5、到货验收单 5、入库单 4、出库单 4、调拨单 2、盘点单 2、库存结存 10、库存流水 17；状态覆盖草稿/待审/已审/执行中/完成；库存对账 `ok=true`。
+
 ## 进行中
 
 - [ ] 无
@@ -110,6 +112,7 @@
 | M8 下拉数据上限 | `useMasterOptions` 一次拉主数据前 200 条做下拉；物资 >200 时下拉不全，需后端加 keyword 查询后改为按需搜索 | M8 记录 |
 | M8 验收库位 | `useMasterOptions` 无库位选项，到货验收的 `location_id` 用可选数字输入；后续可做「仓库→库位」联动下拉 | M8 记录 |
 | M8 部署更新 | `make up` 重建 `erp-api`/`erp-web`（`erp-postgres` 不重建）；前端多阶段源码构建，`deploy/.env` 的 `NPM_REGISTRY`/`PIP_INDEX_URL` 走镜像源 | M8 记录 |
+| M8 演示数据 | `make seed-demo`（`backend/scripts/seed_demo.py`）走 API 造数，需后端已运行（部署栈用 `make seed-demo BASE=http://127.0.0.1:8080`）；主数据按编码幂等、单据以 `[DEMO]` 标记整体跳过；脚本中途失败需先清理已生成单据再重跑 | M8 记录 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -131,3 +134,4 @@
 | 2026-09-19 | M7 LSTM 对比：只读合成需求（内存生成），只写 `ml/results/`；未连接/未写业务库表 | 不涉及结存变更；业务表零写入 |
 | 2026-09-19 | M8 主数据前端：仅通过 `/material-categories`、`/materials`、`/units`、`/suppliers`、`/warehouses`、`/locations` API 读写档案，不触碰 `inventory`/`inventory_batch`/`inventory_transaction`；登录返回权限码为只读 | 不涉及结存变更；`GET /inventory/reconcile` 口径不变；SQLite 后端 66 passed |
 | 2026-09-19 | M8 采购/库存前端：仅通过 `purchase-requisitions`/`purchase-orders`/`supplier-deliveries`/`inbound-orders`/`outbound-orders`/`transfer-orders`/`stocktake-orders`/`inventory*`/`stock-alerts` API 操作；过账/红冲调用后端 service（`stock_ledger` 唯一结存入口），前端不直连库、不改结存；库存查询页提供一键 `GET /inventory/reconcile` | 不涉及结存变更；后端 66 passed，`make verify` 绿 |
+| 2026-09-19 | M8 演示数据：通过 API 生成采购入库/出库/调拨/盘点，结存全部由 `stock_ledger` 流水推导；`GET /inventory/reconcile` 四条差异均为 0 | `reconcile.ok=true`；库存结存 10 行、流水 17 条；未直接改库结存 |

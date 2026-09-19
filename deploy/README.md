@@ -35,6 +35,9 @@ make down
 
 # 部署冒烟：web / 反代 / SPA fallback / 登录 / 鉴权
 ./deploy/smoke.sh                 # 默认 http://127.0.0.1:8080
+
+# 生成现实演示业务数据（走 API，幂等；需栈已运行）
+make seed-demo BASE=http://127.0.0.1:8080
 ```
 
 > 也可以直接用 compose：`cd deploy && docker compose up -d --build`。
