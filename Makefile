@@ -1,5 +1,5 @@
 # 毕设项目统一入口（人和 agent 都用这几个命令）
-.PHONY: verify test lint migrate gen-data baseline forecast simulate ml-venv ml-test ml-lint serve seed up down ps logs clean
+.PHONY: verify test lint migrate gen-data baseline forecast simulate ml-venv ml-test ml-lint perf-venv perf serve seed up down ps logs clean
 
 verify:            ## 质量门禁：结构 + lint + 测试 + 迁移 + ML（交付前必跑）
 	./scripts/verify.sh
@@ -42,6 +42,15 @@ serve:             ## 本地起后端（开发用）
 
 seed:              ## 初始化 RBAC 参考数据 + 管理员（幂等；需可连库）
 	cd backend && .venv/bin/python -m scripts.seed
+
+perf-venv:         ## 创建性能测试独立虚拟环境（Locust，项目内隔离）
+	cd perf && python3 -m venv --without-pip .venv \
+	  && curl -fsSL -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py \
+	  && .venv/bin/python /tmp/get-pip.py -q \
+	  && .venv/bin/pip install -r requirements.txt
+
+perf:              ## 性能测试（Locust headless，默认 127.0.0.1:8000；HOST/USERS/RATE/RUN_TIME 可覆盖）
+	cd perf && ERP_PERF_HOST="$(or $(HOST),http://127.0.0.1:8000)" .venv/bin/locust -f locustfile.py --headless -u $(or $(USERS),10) -r $(or $(RATE),2) -t $(or $(RUN_TIME),30s) --only-summary
 
 up:                ## 一键部署：构建并启动 web+api+db（仅 127.0.0.1:<ERP_WEB_PORT>）
 	cd deploy && docker compose up -d --build

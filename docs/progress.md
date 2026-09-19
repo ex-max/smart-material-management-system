@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**M7 子切片 1 完成**（Docker/Nginx/Compose 一键部署 + 部署文档；`make verify` 绿且 **0 skip**）；M7 余下：LSTM 对比实验与测试/性能。
+- **里程碑**：**M7 子切片 1（Docker 一键部署）+ 子切片 2（系统测试 + Locust 性能）完成**（`make verify` 绿且 **0 skip**）；下一步 **M7 子切片 3：LSTM 与 LightGBM 对比**。
 - **更新时间**：2026-09-19
 
 ## 已完成
@@ -31,13 +31,15 @@
 
 - [x] **M7 子切片 1：Docker/Nginx/Compose 一键部署 + 部署文档**：`deploy/` 新增 backend/frontend Dockerfile（非 root、精简、healthcheck）、`nginx/default.conf`（静态托管 + `/api` 反代 + SPA history fallback + `/healthz`）、`backend-entrypoint.sh`（等库 → `alembic upgrade head` → 幂等 seed → uvicorn）、`smoke.sh` 与 `.env.example`；`docker-compose.yml` 在原有 `db` 服务（定义不变）上新增 `api`（不暴露宿主端口）与 `web`（仅 `127.0.0.1:${ERP_WEB_PORT:-8080}`），沿用项目默认网络/独立卷；`make up/down/ps/logs` 与 `make seed`（改用 `python -m scripts.seed`，消除 `PYTHONPATH` 坑）；新增 ADR-0003 部署拓扑。实测 `make up` 起 3 容器、`erp-postgres` 未被重建、`smoke.sh` 5/5、迁移 head、seed 幂等、`server-health.sh` 46/0/0 PASS。
 
+- [x] **M7 子切片 2：系统测试 + Locust 性能测试**：新增 `backend/tests/test_system.py`（功能：请购→审批→转单→到货→验收→入库→结存对账；接口：统一响应 `{code,message,data,trace_id}`/`X-Trace-Id`/OpenAPI 可发现/错误包装；权限：匿名 401、只读 403、管理员放行）共 3 条；新增 `perf/`（`locustfile.py` 只读场景、`requirements.txt`、`README.md`）与 `make perf-venv`/`make perf`（Locust **headless**，不启 Web UI、不占 8089）。实测 20s/10 用户：**200 请求 / 0 失败**、聚合中位数 11ms、登录 ~587ms（bcrypt）。
+
 ## 进行中
 
 - [ ] 无
 
 ## 下一步（只做这一条）
 
-**M7 子切片：LSTM 与 LightGBM 对比实验** —— 复用 `ml/` 的 rolling-origin 回测协议与结果落盘规范（`ml/results/`），按 ADI/CV² 象限比较 LSTM 与 LightGBM 的 MASE/MAE，产出可复现实验表；随后补 M7 测试/性能（Locust 方案 + 功能/接口/权限系统测试）。涉服务器操作先加载 `server-ops`。
+**M7 子切片：LSTM 与 LightGBM 对比实验** —— 复用 `ml/erp_ml/backtest.py::backtest_global` 的 rolling-origin 协议与结果落盘规范（`ml/results/runs/`），按 ADI/CV² 象限比较 LSTM 与 LightGBM 的 MASE/MAE/sMAPE，并用 Wilcoxon 检验；`torch` 放入 `ml` 可选依赖（`lstm` extra，CPU 轮子），不进入默认门禁。涉服务器操作先加载 `server-ops`。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -87,6 +89,7 @@
 | M7 访问方式 | 一键部署默认 `http://127.0.0.1:8080`（`deploy/.env` 的 `ERP_WEB_PORT` 可改）；**仅回环**，未做对外域名反代（需用户确认后再加） | M7 记录（待确认） |
 | M7 alembic 日志 | `alembic current/upgrade` 会先打印两行格式模板字面量（`%(levelname)...`），为 `alembic.ini` 既有现象，迁移功能正常 | 既有 |
 | M7 部署边界 | 容器只跑 `alembic upgrade head` + 幂等 seed；api 不对宿主暴露；web 容器内 nginx 与宿主 nginx 无关 | M7 记录 |
+| M7 性能测试端口 | Locust 用 `--headless`，不启动 Web UI（不占 8089），只对 `HOST`（默认 `127.0.0.1:8000`）发请求；场景全为只读 GET + 登录，不写业务表 | M7 记录 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -104,3 +107,4 @@
 | 2026-09-19 | M6 决策服务只读 `inventory`（结存/锁定）与在途汇总，生成 `replenishment_*` 建议；不写 `inventory`/`inventory_batch`/`inventory_transaction`，不改变结存 | 不涉及结存变更；`GET /inventory/reconcile` 口径不变；SQLite + PG 双跑 61 passed |
 | 2026-09-19 | M6 前端补货建议页仅通过 `/replenishment-*` API 读写建议/策略，不直连数据库；确认/转单调用后端既有事务与状态机 | 不涉及结存变更；前端只读 API，`converted_pr_id` 来源链由后端保证 |
 | 2026-09-19 | M7 一键部署：容器启动只跑 `alembic upgrade head` + 幂等 seed（RBAC/管理员）；api/web 只走业务 API，不触碰 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；部署前后业务表零写入；`GET /inventory/reconcile` 口径不变 |
+| 2026-09-19 | M7 系统测试 + Locust 性能：系统测试用测试库覆盖入库过账并断言对账；Locust 场景仅 GET + 登录 | 系统测试 `reconcile.ok=true`；性能测试不写业务表、不改结存 |

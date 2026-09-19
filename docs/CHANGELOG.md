@@ -194,3 +194,15 @@
 - **回滚**：`git revert <本次提交>`；停止栈 `make down`（保留卷）；彻底移除 `cd deploy && docker compose down -v`（删数据，需确认）。
 - **备注**：本切片不引入 Locust/Redis/Celery；性能测试与 LSTM 对比属 M7 后续子切片。本机 Docker Hub 不可达，构建用 `docker.m.daocloud.io` 预拉基础镜像并 retag；Dockerfile 提供可选 `PIP_INDEX_URL`/`NPM_REGISTRY` 构建参数（默认官方源，`deploy/.env` 可覆盖）。
 
+## 2026-09-19 · 系统测试 + Locust 性能测试（M7 子切片 2）
+
+- **改动**：
+  - 新增 `backend/tests/test_system.py`：功能（登录→请购→提交→审批→转采购订单→到货→提交→验收→入库过账→结存/流水/对账）、接口（统一响应 `{code,message,data,trace_id}`、`X-Trace-Id`/`X-Process-Time-Ms`、OpenAPI 可发现、404/422 也走同一包装）、权限（匿名 401、只读 403/10403、管理员 200）各一条。
+  - 新增 `perf/`（项目内隔离）：`locustfile.py`（登录一次 + 只读 GET，`name=` 归并，不写业务表）、`requirements.txt`（locust>=2.32,<3）、`README.md`（端口约定/运行方式/参考基线）。
+  - `Makefile` 新增 `perf-venv`、`perf`（headless，默认 `127.0.0.1:8000`，`HOST/USERS/RATE/RUN_TIME` 可覆盖）。
+- **依赖**：新增 **Locust**（仅性能场景；放独立 `perf/.venv`，不进后端运行/测试环境、不进 `make verify`）。理由：M7 方案指定 Locust；其 gevent/flask 等依赖不应污染后端 venv。
+- **原因**：`docs/progress.md`"下一步" M7 子切片 —— 补系统测试与可复现性能测试。
+- **验证**：`make verify` 绿且 0 skip（后端 **64 passed** = 原 61 + 系统测试 3；前端 lint；ml 58 passed；迁移链 1455 行；不变量通过）。`make perf HOST=http://127.0.0.1:8000 USERS=10 RATE=5 RUN_TIME=20s` → **200 请求 / 0 失败**，聚合中位数 11ms、P95 340ms；`POST /auth/login` avg 587ms（bcrypt 预期）。
+- **回滚**：`git revert <本次提交>`；`rm -rf perf/.venv`。
+- **备注**：性能场景为**只读相对基线**（回归对比用），非容量结论；Locust headless 不占端口。
+
