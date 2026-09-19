@@ -28,6 +28,8 @@ curl -fsSL -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py
 | `make baseline` | 基线滚动回测（Naive / 季节 Naive / MA7 / MA28 / ETS）→ `ml/results/` |
 | `make forecast` | M4 预测实验（滞后/滑动/日历特征 + LightGBM + Croston/TSB/ARIMA，按象限映射）→ `ml/results/` |
 | `make simulate` | M5 动态 SS/ROP + 补货建议 + A/B 库存仿真（30 seed + Wilcoxon）→ `ml/results/` |
+| `make lstm` | M7 余力：LSTM 与 LightGBM 需求预测对比（torch 为可选依赖）→ `ml/results/` |
+| `make ml-lstm` | 安装 LSTM 可选依赖 torch（CPU 轮子，项目内隔离） |
 | `make ml-test` / `make ml-lint` | ML 单元测试 / lint |
 
 也可直接运行：
@@ -121,6 +123,20 @@ make forecast 默认不跑 ETS（单序列慢，M3 基线已含，可用 --local
 映射（models.model_mapping()）：平滑/波动 → LightGBM（对比 ARIMA）；间歇/块状 → Croston（对比 TSB）。
 回测口径与 M3 完全一致（rolling-origin、初始训练窗 180、步长 7、horizon 7/14/30，sMAPE/MASE）。
 
+## LSTM 与 LightGBM 对比（M7 余力，erp_ml/lstm.py、lstm_experiment.py）
+
+- **协议完全复用 M4**：同一批分层序列、同一 `BacktestConfig`（初始窗 180、步长 7、
+  horizon 7/14/30）、同一 `backtest_global` 口径；LightGBM 与 LSTM 在同一次实验内各跑一遍。
+- **LSTM 口径**：面板级全局模型（跨序列共享权重），输入为每序列最近 `lookback` 天的
+  `log1p` 标准化窗口；每个 origin **从零重训**；递归多步预测（预测回填为下一期输入），
+  预测值 `expm1` 反变换并 clip≥0；均值/方差只用 `history[:origin]`，无未来信息泄漏。
+- **成本控制**：每序列只取最近 `windows_per_series` 个窗口，固定 `epochs`/`hidden_size`/
+  线程数；全部超参写入 `config.json`。torch 为**可选依赖**（`make ml-lstm`，CPU 轮子），
+  未安装时 LSTM 测试自动跳过、不影响 `make verify`。
+- **产物**：`metrics.csv` / `summary.csv` / `comparison.csv`（总体+分象限配对差值、
+  MAE/MASE/sMAPE 的 Wilcoxon p 值）/ `segments.csv` / `figures/`。
+- **结论纪律**：只在 Wilcoxon p<0.05 时写"优于"，否则写"差异不显著"；按象限分层报告。
+
 ## 库存决策与 A/B 仿真（M5）
 
 实现：`erp_ml/service_level.py`（口径）、`inventory.py`（SS/ROP/EOQ + 日度仿真）、
@@ -173,6 +189,7 @@ ml/results/
 │   ├── metrics.csv     # 逐 seed × 序列 × horizon × 模型明细
 │   ├── summary.csv     # 象限 × 模型 × horizon 汇总（均值±标准差）
 │   ├── model_mapping.csv  # 逐象限：推荐/对比模型与最优模型 sMAPE
+│   ├── comparison.csv  # （仅 make lstm）LSTM vs LightGBM 分层配对对比 + Wilcoxon p
 │   ├── segments.csv    # 分层结果（ADI/CV²/象限/ABC）
 │   └── figures/*.png   # 300dpi 论文用图
 ├── segments.csv        # latest 分层快照
@@ -196,4 +213,6 @@ ml/results/
 
 - [x] M3：数据生成器 + 需求分层 + Naive/MA/ETS 基线滚动回测
 - [x] M4：滞后/滑动/日历特征 + LightGBM 面板模型 + Croston/TSB/ARIMA 与 ADI/CV² 分层映射
-- [ ] M5：动态 SS/ROP、补货建议、A/B 库存仿真（多种子 + Wilcoxon）—— 见上「库存决策与 A/B 仿真」
+- [x] M5：动态 SS/ROP、补货建议、A/B 库存仿真（多种子 + Wilcoxon）—— 见上「库存决策与 A/B 仿真」
+- [x] M6：预测/补货六表后端化 + 决策服务 + API + 前端补货建议页（后端见 `backend/`）
+- [x] M7：Docker 一键部署 + 系统/性能测试 + **LSTM vs LightGBM 对比（余力）**

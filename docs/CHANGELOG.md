@@ -206,3 +206,15 @@
 - **回滚**：`git revert <本次提交>`；`rm -rf perf/.venv`。
 - **备注**：性能场景为**只读相对基线**（回归对比用），非容量结论；Locust headless 不占端口。
 
+## 2026-09-19 · LSTM 与 LightGBM 对比（M7 子切片 3，余力）
+
+- **改动**：
+  - 新增 `ml/erp_ml/lstm.py`：面板级 LSTM（`log1p` + 逐序列标准化，均值/方差只用 `history[:origin]`；每个 origin 从零重训；递归多步、预测回填；固定 torch 种子与线程数，结果确定）。
+  - 新增 `ml/erp_ml/lstm_experiment.py`：**复用** `erp_ml.backtest.backtest_global` 的 rolling-origin 协议，LightGBM 与 LSTM 在同一批分层序列上各跑一遍；输出 `metrics.csv`/`summary.csv`/`comparison.csv`（总体+分象限配对差值、MAE/MASE/sMAPE 的 Wilcoxon p 值）/`segments.csv`/`figures/`。
+  - 新增 `ml/tests/test_lstm.py`（形状/非负、确定性、改写未来不改预测）；`ml/pyproject.toml` 增可选 extra `lstm`；`erp_ml/artifacts.py` 记录 torch 版本；`Makefile` 增 `ml-lstm`/`lstm`；`ml/README.md` 补章节。
+- **依赖**：新增 **PyTorch（CPU）**。理由：LSTM 对比需要神经网络框架；仅放入 `ml` 的**可选依赖**（`make ml-lstm` 用 `download.pytorch.org/whl/cpu`），不进后端/前端、不进默认门禁；未安装时 LSTM 测试自动跳过。
+- **原因**：`docs/progress.md`"下一步" M7 余力项 —— 沿用 M4/M5 的回测与统计协议，比较 LSTM 与 LightGBM。
+- **验证**：`make lstm`（seeds 1–3 × 每 seed 分层 40 序列 × horizon 7/14/30）→ `ml/results/runs/20260919-1715_m7-lstm/`。horizon=7（配对 n=120）：**MASE LSTM 0.831 vs LightGBM 0.902（Δ=-0.071，p=1.8e-7）**、**MAE 3.65 vs 4.02（Δ=-0.370，p=2.3e-10）**；分象限 LSTM 在波动/间歇/块状更优，**平滑象限 LightGBM 更优（MASE 0.955 vs 0.897）**；sMAPE 总体反向（109.2 vs 100.2），为零值多的 sMAPE 陷阱。horizon 14/30 结论一致。`ml` ruff 通过、pytest **61 passed**（含 LSTM 3 条）。
+- **回滚**：`git revert <本次提交>`；如需移除 torch：`ml/.venv/bin/pip uninstall -y torch`。
+- **备注**：LSTM 每 origin 从零重训，成本较高，本机 3 seed×40 序列约 20min（2 线程），用 `windows_per_series`/`epochs` 控制；结论只在 Wilcoxon 显著时写"优于"，且必须按象限分层。
+

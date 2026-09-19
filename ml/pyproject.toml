@@ -17,6 +17,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5"]
+# LSTM 对比实验为可选切片：torch 用 CPU 轮子安装，见 make ml-lstm
+lstm = ["torch>=2.2"]
 
 [build-system]
 requires = ["setuptools>=68"]

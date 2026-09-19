@@ -22,6 +22,7 @@ TRACKED_PACKAGES = (
     "scipy",
     "statsmodels",
     "lightgbm",
+    "torch",
     "pyarrow",
     "matplotlib",
     "joblib",

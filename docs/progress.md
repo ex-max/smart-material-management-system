@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**M7 子切片 1（Docker 一键部署）+ 子切片 2（系统测试 + Locust 性能）完成**（`make verify` 绿且 **0 skip**）；下一步 **M7 子切片 3：LSTM 与 LightGBM 对比**。
+- **里程碑**：**M7 完成**（Docker 一键部署 + 系统/性能测试 + LSTM vs LightGBM 对比；`make verify` 绿且 **0 skip**）—— 方案既定里程碑全部交付。
 - **更新时间**：2026-09-19
 
 ## 已完成
@@ -33,13 +33,15 @@
 
 - [x] **M7 子切片 2：系统测试 + Locust 性能测试**：新增 `backend/tests/test_system.py`（功能：请购→审批→转单→到货→验收→入库→结存对账；接口：统一响应 `{code,message,data,trace_id}`/`X-Trace-Id`/OpenAPI 可发现/错误包装；权限：匿名 401、只读 403、管理员放行）共 3 条；新增 `perf/`（`locustfile.py` 只读场景、`requirements.txt`、`README.md`）与 `make perf-venv`/`make perf`（Locust **headless**，不启 Web UI、不占 8089）。实测 20s/10 用户：**200 请求 / 0 失败**、聚合中位数 11ms、登录 ~587ms（bcrypt）。
 
+- [x] **M7 子切片 3（余力）：LSTM 与 LightGBM 对比**：新增 `ml/erp_ml/lstm.py`（面板级 LSTM：`log1p`+逐序列标准化、均值/方差只用历史、每 origin 从零重训、递归多步、固定种子）与 `lstm_experiment.py`（**复用** `backtest_global` 的 rolling-origin 协议，输出 `comparison.csv` 配对差值与 Wilcoxon）、`ml/tests/test_lstm.py`（3 条）；torch 为 `ml` **可选依赖**（CPU 轮子，`make ml-lstm`）。`make lstm`（seeds 1–3 × 每 seed 分层 40 序列 × horizon 7/14/30）→ `ml/results/runs/20260919-1715_m7-lstm/`。horizon=7（配对 n=120）：**MASE LSTM 0.831 vs LightGBM 0.902（Δ=-0.071，p=1.8e-7）**、**MAE 3.65 vs 4.02（p=2.3e-10）**；分象限 LSTM 在波动/间歇/块状更优，**平滑象限 LightGBM 更优**；sMAPE 总体反向（109.2 vs 100.2），属零值多的 sMAPE 陷阱，以 MASE/MAE 为准。
+
 ## 进行中
 
 - [ ] 无
 
 ## 下一步（只做这一条）
 
-**M7 子切片：LSTM 与 LightGBM 对比实验** —— 复用 `ml/erp_ml/backtest.py::backtest_global` 的 rolling-origin 协议与结果落盘规范（`ml/results/runs/`），按 ADI/CV² 象限比较 LSTM 与 LightGBM 的 MASE/MAE/sMAPE，并用 Wilcoxon 检验；`torch` 放入 `ml` 可选依赖（`lstm` extra，CPU 轮子），不进入默认门禁。涉服务器操作先加载 `server-ops`。
+**无（M7 已完成，方案既定里程碑全部交付）**。如需继续：由 `ml/results/` 汇总论文表格/图与答辩演示脚本；对外访问需先与用户确认域名/nginx 反代（当前仅 `127.0.0.1` 本地运行）。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -90,6 +92,8 @@
 | M7 alembic 日志 | `alembic current/upgrade` 会先打印两行格式模板字面量（`%(levelname)...`），为 `alembic.ini` 既有现象，迁移功能正常 | 既有 |
 | M7 部署边界 | 容器只跑 `alembic upgrade head` + 幂等 seed；api 不对宿主暴露；web 容器内 nginx 与宿主 nginx 无关 | M7 记录 |
 | M7 性能测试端口 | Locust 用 `--headless`，不启动 Web UI（不占 8089），只对 `HOST`（默认 `127.0.0.1:8000`）发请求；场景全为只读 GET + 登录，不写业务表 | M7 记录 |
+| M7 LSTM 依赖/成本 | torch 为 `ml` 可选依赖（CPU 轮子；装后 venv 约 1.6GB）；LSTM 每 origin 从零重训，本机 3 seed×40 序列约 20min（2 线程），已用 `windows_per_series`/`epochs` 控制成本 | M7 记录 |
+| M7 LSTM vs GBM 结论 | MASE/MAE 上 LSTM 总体显著更优（波动/间歇/块状），但**平滑象限 LightGBM 更优**、sMAPE 总体反向；结论必须分象限、以 MASE/MAE 为准，禁止只报总体 sMAPE | M7 记录 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -108,3 +112,4 @@
 | 2026-09-19 | M6 前端补货建议页仅通过 `/replenishment-*` API 读写建议/策略，不直连数据库；确认/转单调用后端既有事务与状态机 | 不涉及结存变更；前端只读 API，`converted_pr_id` 来源链由后端保证 |
 | 2026-09-19 | M7 一键部署：容器启动只跑 `alembic upgrade head` + 幂等 seed（RBAC/管理员）；api/web 只走业务 API，不触碰 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；部署前后业务表零写入；`GET /inventory/reconcile` 口径不变 |
 | 2026-09-19 | M7 系统测试 + Locust 性能：系统测试用测试库覆盖入库过账并断言对账；Locust 场景仅 GET + 登录 | 系统测试 `reconcile.ok=true`；性能测试不写业务表、不改结存 |
+| 2026-09-19 | M7 LSTM 对比：只读合成需求（内存生成），只写 `ml/results/`；未连接/未写业务库表 | 不涉及结存变更；业务表零写入 |

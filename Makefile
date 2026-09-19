@@ -1,5 +1,5 @@
 # 毕设项目统一入口（人和 agent 都用这几个命令）
-.PHONY: verify test lint migrate gen-data baseline forecast simulate ml-venv ml-test ml-lint perf-venv perf serve seed up down ps logs clean
+.PHONY: verify test lint migrate gen-data baseline forecast simulate lstm ml-venv ml-test ml-lint ml-lstm perf-venv perf serve seed up down ps logs clean
 
 verify:            ## 质量门禁：结构 + lint + 测试 + 迁移 + ML（交付前必跑）
 	./scripts/verify.sh
@@ -36,6 +36,12 @@ ml-test:           ## ML 测试
 
 ml-lint:           ## ML lint
 	cd ml && .venv/bin/python -m ruff check .
+
+ml-lstm:           ## 安装 LSTM 可选依赖（CPU torch，仅按需；项目内隔离）
+	cd ml && .venv/bin/pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+
+lstm:              ## M7 余力：LSTM 与 LightGBM 对比（结果落 ml/results/，不进 git）
+	cd ml && .venv/bin/python -m erp_ml.lstm_experiment --seeds 1 2 3 --max-series 40 --tag m7-lstm
 
 serve:             ## 本地起后端（开发用）
 	cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000
