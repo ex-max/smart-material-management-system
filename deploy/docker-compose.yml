@@ -1,6 +1,9 @@
-# ERP 本地开发数据库：独立 PostgreSQL 实例（仅监听 127.0.0.1:5433）
-# 目的：验证 PG 专有行为（jsonb / postgresql_where / COALESCE 表达式唯一索引 / timestamptz）。
-# 约束：不碰宿主已有容器（halo / forgejo / forgejo-db / new-api-*），独立卷、独立端口、仅回环。
+# ERP 一键部署：web(nginx) → api(uvicorn) → db(PostgreSQL)
+# 约束（AGENTS 第六节 / server-ops）：
+#   - 只有 web 入口暴露，且仅绑定 127.0.0.1:<ERP_WEB_PORT>；api/db 不对宿主暴露；
+#   - 独立卷 erp_erp-pgdata、独立网络 erp_default（项目默认网络，不与其他栈互通）；
+#   - 不碰宿主其他容器/站点（halo / forgejo / forgejo-db / new-api-* / 宝塔 nginx）。
+# 用法：make up / make down（或 cd deploy && docker compose up -d --build）
 name: erp
 
 services:
@@ -23,6 +26,56 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/backend.Dockerfile
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+    image: erp-api:local
+    container_name: erp-api
+    restart: unless-stopped
+    environment:
+      ERP_ENV: ${ERP_ENV:-prod}
+      ERP_DATABASE_URL: postgresql+psycopg://erp:erp@db:5432/erp
+      ERP_JWT_SECRET: ${ERP_JWT_SECRET:-dev-only-secret-please-change-me-32bytes}
+      ERP_ACCESS_TOKEN_EXPIRE_MINUTES: ${ERP_ACCESS_TOKEN_EXPIRE_MINUTES:-120}
+      ERP_CORS_ORIGINS: ${ERP_CORS_ORIGINS:-http://127.0.0.1:8080,http://localhost:8080}
+      ERP_ADMIN_USERNAME: ${ERP_ADMIN_USERNAME:-admin}
+      ERP_ADMIN_PASSWORD: ${ERP_ADMIN_PASSWORD:-admin123}
+      TZ: UTC
+    depends_on:
+      db:
+        condition: service_healthy
+    # 不映射宿主端口：仅经 web 的 /api 反代访问，避免对外暴露业务接口
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2).status==200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 30s
+      retries: 6
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/frontend.Dockerfile
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+    image: erp-web:local
+    container_name: erp-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${ERP_WEB_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 6
 
 volumes:
   erp-pgdata:

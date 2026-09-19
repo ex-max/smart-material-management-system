@@ -1,5 +1,5 @@
 # 毕设项目统一入口（人和 agent 都用这几个命令）
-.PHONY: verify test lint migrate gen-data baseline forecast simulate ml-venv ml-test ml-lint serve clean
+.PHONY: verify test lint migrate gen-data baseline forecast simulate ml-venv ml-test ml-lint serve seed up down ps logs clean
 
 verify:            ## 质量门禁：结构 + lint + 测试 + 迁移 + ML（交付前必跑）
 	./scripts/verify.sh
@@ -39,6 +39,21 @@ ml-lint:           ## ML lint
 
 serve:             ## 本地起后端（开发用）
 	cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000
+
+seed:              ## 初始化 RBAC 参考数据 + 管理员（幂等；需可连库）
+	cd backend && .venv/bin/python -m scripts.seed
+
+up:                ## 一键部署：构建并启动 web+api+db（仅 127.0.0.1:<ERP_WEB_PORT>）
+	cd deploy && docker compose up -d --build
+
+down:              ## 停止一键部署（保留数据卷，不删数据）
+	cd deploy && docker compose down
+
+ps:                ## 查看一键部署容器状态
+	cd deploy && docker compose ps
+
+logs:              ## 跟踪一键部署日志（Ctrl-C 退出）
+	cd deploy && docker compose logs -f --tail=100
 
 clean:
 	rm -rf data/* ml/results backend/.pytest_cache frontend/dist

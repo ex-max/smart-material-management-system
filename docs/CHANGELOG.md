@@ -181,3 +181,16 @@
 - **验证**：`make verify` 绿且 **0 skip**（前端 lint 由 skip 转真检查；后端 61 passed；ml 58 passed；迁移链 1455 行）。前端 `npm run lint` / `vue-tsc --noEmit` / `npm run build` 均通过；PG16 后端 61 passed。运行时冒烟：`npm run dev` + `make serve`，经 Vite 代理 `GET /api/health`、`POST /auth/login`(admin)、创建策略、`POST /replenishment-suggestions/generate`、建议列表均正常。
 - **回滚**：`git revert <本次提交>`（删除 `frontend/` 新增文件即可；`node_modules/`/`dist/` 不入库；后端 `response_model` 改动随之回滚）。
 - **备注**：前端依赖在 `frontend/node_modules`（项目内隔离、不入库）；`openapi.json`/`schema.d.ts` 为生成快照，接口变更后重跑 `npm run gen:api`；生产静态托管/nginx 留 M7。
+
+## 2026-09-19 · 一键部署：Docker/Nginx/Compose + 部署文档（M7 子切片 1）
+
+- **改动**：
+  - 新增容器化文件：根 `.dockerignore`；`deploy/backend.Dockerfile`（python:3.12-slim + uvicorn，非 root uid 10001，容器内 healthcheck）、`deploy/frontend.Dockerfile`（node:20-slim 多阶段构建 → nginx:1.27-alpine 静态托管）、`deploy/nginx/default.conf`（静态 + `/api` 反代 + SPA history fallback + `/healthz`）、`deploy/backend-entrypoint.sh`（等库 → `alembic upgrade head` → 幂等 seed → uvicorn）、`deploy/smoke.sh`（5 项部署冒烟）。
+  - `deploy/docker-compose.yml`：在原有 `db` 服务（**定义不变**）上新增 `api`（不对宿主暴露端口）与 `web`（仅 `127.0.0.1:${ERP_WEB_PORT:-8080}`），`depends_on` healthcheck 条件 + 各自 healthcheck；沿用项目默认网络 `erp_default` 与独立卷 `erp_erp-pgdata`。
+  - 新增 `deploy/.env.example`（端口/JWT/管理员/镜像源）；重写 `deploy/README.md`（拓扑/端口/连接串/迁移/seed/回滚/影响/边界）；新增 `docs/adr/0003-deployment.md`。
+  - `Makefile` 新增 `seed`（改用 `python -m scripts.seed`，消除 `PYTHONPATH` 坑）、`up`/`down`/`ps`/`logs` 一键入口；新增 `backend/scripts/__init__.py`；`backend/README.md` 同步 seed 命令。
+- **原因**：`docs/progress.md` 的"下一步" M7 子切片 1 —— 把 backend/frontend/db 纳入 `deploy/` 一键部署，补启动/迁移/静态托管与部署文档；按 `server-ops` 项目内隔离、仅回环暴露。
+- **验证**：`make verify` 绿且 0 skip（后端 61 passed、前端 lint、ml 58 passed、迁移链 1455 行、不变量通过）。`make up` 构建并起 3 容器：`erp-api`(healthy, uid 10001)、`erp-web`(healthy, 仅 `127.0.0.1:8080`)、`erp-postgres`(**原容器未重建**，ID/创建时间不变)。`deploy/smoke.sh` 5/5（web `/healthz`、`/api/health` 反代、SPA fallback、登录、鉴权）。容器内 `alembic current` = `0007_forecast_replenishment (head)`、二次 seed 幂等。`/root/dsh/server-health.sh` 改动前 44/0/0 PASS → 改动后 46/0/0 PASS（+2 为新增容器）。
+- **回滚**：`git revert <本次提交>`；停止栈 `make down`（保留卷）；彻底移除 `cd deploy && docker compose down -v`（删数据，需确认）。
+- **备注**：本切片不引入 Locust/Redis/Celery；性能测试与 LSTM 对比属 M7 后续子切片。本机 Docker Hub 不可达，构建用 `docker.m.daocloud.io` 预拉基础镜像并 retag；Dockerfile 提供可选 `PIP_INDEX_URL`/`NPM_REGISTRY` 构建参数（默认官方源，`deploy/.env` 可覆盖）。
+

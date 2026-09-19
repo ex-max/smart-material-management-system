@@ -33,7 +33,7 @@ curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py
 .venv/bin/ruff check .               # lint
 cp .env.example .env                 # 配置（.env 不进仓库）
 .venv/bin/alembic upgrade head       # 建表（需要 PostgreSQL）
-.venv/bin/python scripts/seed.py     # 初始化 RBAC + 管理员
+.venv/bin/python -m scripts.seed    # 初始化 RBAC + 管理员（幂等；等价 make seed）
 .venv/bin/uvicorn app.main:app --reload --port 8000   # 本地起服务
 ~~~
 

@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**M6 完成**（后端 `forecast_*`/`replenishment_*` 六表 + 决策服务 + API + 一键转请购单；前端补货建议页；`make verify` 绿且 **0 skip**）；下一步 **M7 工程化（Docker 一键部署 + 测试/性能 + 文档；余力项 LSTM 对比）**
+- **里程碑**：**M7 子切片 1 完成**（Docker/Nginx/Compose 一键部署 + 部署文档；`make verify` 绿且 **0 skip**）；M7 余下：LSTM 对比实验与测试/性能。
 - **更新时间**：2026-09-19
 
 ## 已完成
@@ -29,13 +29,15 @@
 
 - [x] **M6 前端补货建议页（方案 M6 的"前端 + 一键转请购单"验收项）**：新增前端工程（Vue 3 + TS + Vite 5 + Element Plus + vue-router + axios）：`frontend/package.json`、`vite.config.ts`（`/api` 代理到 127.0.0.1:8000、dev 仅绑 127.0.0.1:5173）、`tsconfig.json`、`eslint.config.js`（ESLint 9 flat + eslint-plugin-vue + typescript-eslint）；`src/api/http.ts` 统一解包 `{code,message,data,trace_id}`、401 跳登录；`src/composables/useAuth.ts`、`src/router` 登录守卫、`src/layouts/MainLayout.vue`、`LoginView.vue` 与 `ReplenishmentView.vue`（策略 CRUD、建议列表/详情/确认/驳回、单条与批量一键转请购单，详情展示可用量/ROP/SS/预测/参数来源/reason）；接口类型由后端 OpenAPI 生成（`openapi.json` + `src/api/schema.d.ts`，脚本 `npm run gen:api`），为此给 M6/认证/主数据接口补 `response_model`（新增 `backend/app/schema/common.py` 的 `ApiResponse[T]`/`PageOut[T]`），**不手写重复类型**。
 
+- [x] **M7 子切片 1：Docker/Nginx/Compose 一键部署 + 部署文档**：`deploy/` 新增 backend/frontend Dockerfile（非 root、精简、healthcheck）、`nginx/default.conf`（静态托管 + `/api` 反代 + SPA history fallback + `/healthz`）、`backend-entrypoint.sh`（等库 → `alembic upgrade head` → 幂等 seed → uvicorn）、`smoke.sh` 与 `.env.example`；`docker-compose.yml` 在原有 `db` 服务（定义不变）上新增 `api`（不暴露宿主端口）与 `web`（仅 `127.0.0.1:${ERP_WEB_PORT:-8080}`），沿用项目默认网络/独立卷；`make up/down/ps/logs` 与 `make seed`（改用 `python -m scripts.seed`，消除 `PYTHONPATH` 坑）；新增 ADR-0003 部署拓扑。实测 `make up` 起 3 容器、`erp-postgres` 未被重建、`smoke.sh` 5/5、迁移 head、seed 幂等、`server-health.sh` 46/0/0 PASS。
+
 ## 进行中
 
 - [ ] 无
 
 ## 下一步（只做这一条）
 
-**M7 工程化（Docker 一键部署 + 测试/性能 + 文档；余力项 LSTM 对比）** —— 目标"一键部署"：把 backend/frontend/db 纳入 `deploy/` 的 compose（仅 127.0.0.1、独立卷、healthcheck），补启动/迁移/静态托管与 `deploy/README.md`；补关键性能/并发用例与文档；余力再做 LSTM 与 LightGBM 对比实验（复用 `ml/` 回测协议）。涉服务器操作先加载 `server-ops`。
+**M7 子切片：LSTM 与 LightGBM 对比实验** —— 复用 `ml/` 的 rolling-origin 回测协议与结果落盘规范（`ml/results/`），按 ADI/CV² 象限比较 LSTM 与 LightGBM 的 MASE/MAE，产出可复现实验表；随后补 M7 测试/性能（Locust 方案 + 功能/接口/权限系统测试）。涉服务器操作先加载 `server-ops`。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -80,6 +82,11 @@
 | M6 API 类型化 | 为让 OpenAPI 产出可用类型，给 M6/认证/主数据接口加了 `response_model`（`ApiResponse[T]`/`PageOut[T]`）；接口变更后需重跑 `npm run gen:api` 同步 `src/api/schema.d.ts` | M6 记录 |
 | M6 前端未覆盖权限置灰 | 前端未按权限码隐藏按钮（`UserOut` 不含 permissions），越权时由后端 403 + 全局提示兜底 | M6 记录 |
 | M6 dev 代理 | Vite dev 仅 `127.0.0.1:5173`，`/api` 代理到 `127.0.0.1:8000`；生产部署（nginx/静态托管）留 M7 | M6 记录 |
+| M7 一键部署镜像源 | 本机 Docker Hub 不可达、已配置镜像 `docker.1ms.run` 极慢：构建前用 `docker.m.daocloud.io` 预拉 `python:3.12-slim`/`node:20-slim`/`nginx:1.27-alpine` 并 retag；Dockerfile 支持 `PIP_INDEX_URL`/`NPM_REGISTRY` 构建参数（默认官方源，`deploy/.env` 可覆盖） | M7 记录 |
+| M7 `make down` 语义 | `make down` = `docker compose down`，会停止/移除本项目三个容器（含 `erp-postgres`，**卷保留**），`make up` 重建。仅限本项目栈，不影响其他服务 | M7 记录 |
+| M7 访问方式 | 一键部署默认 `http://127.0.0.1:8080`（`deploy/.env` 的 `ERP_WEB_PORT` 可改）；**仅回环**，未做对外域名反代（需用户确认后再加） | M7 记录（待确认） |
+| M7 alembic 日志 | `alembic current/upgrade` 会先打印两行格式模板字面量（`%(levelname)...`），为 `alembic.ini` 既有现象，迁移功能正常 | 既有 |
+| M7 部署边界 | 容器只跑 `alembic upgrade head` + 幂等 seed；api 不对宿主暴露；web 容器内 nginx 与宿主 nginx 无关 | M7 记录 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -96,3 +103,4 @@
 | 2026-09-19 | M5 库存仿真：只读合成需求（内存生成，不重写 `data/`）与 `ml/results/`；未连接业务库，未写 `inventory`/`inventory_transaction`/`forecast_*`/`replenishment_*`；补货建议/策略仅为 ML 结果表（字段对齐 §12.5/§12.6） | 不涉及结存变更；业务表零写入 |
 | 2026-09-19 | M6 决策服务只读 `inventory`（结存/锁定）与在途汇总，生成 `replenishment_*` 建议；不写 `inventory`/`inventory_batch`/`inventory_transaction`，不改变结存 | 不涉及结存变更；`GET /inventory/reconcile` 口径不变；SQLite + PG 双跑 61 passed |
 | 2026-09-19 | M6 前端补货建议页仅通过 `/replenishment-*` API 读写建议/策略，不直连数据库；确认/转单调用后端既有事务与状态机 | 不涉及结存变更；前端只读 API，`converted_pr_id` 来源链由后端保证 |
+| 2026-09-19 | M7 一键部署：容器启动只跑 `alembic upgrade head` + 幂等 seed（RBAC/管理员）；api/web 只走业务 API，不触碰 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；部署前后业务表零写入；`GET /inventory/reconcile` 口径不变 |

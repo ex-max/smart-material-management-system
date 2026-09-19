@@ -1,0 +1,24 @@
+# Docker 构建上下文忽略（构建上下文 = 仓库根，见 deploy/docker-compose.yml）
+# 目的：只把镜像真正需要的源码送进构建上下文，避免 .venv/node_modules/data 撑大上下文。
+.git
+.gitignore
+**/__pycache__/
+**/*.py[cod]
+backend/.venv/
+ml/.venv/
+.venv/
+frontend/node_modules/
+frontend/dist/
+data/
+ml/results/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+# 其他模块：后端/前端镜像都不需要（减小上下文）
+docs/
+ml/
+scripts/
+# 密钥与环境：绝不进镜像
+.env
+**/.env
+**/*.log
