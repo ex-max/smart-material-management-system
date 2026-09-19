@@ -56,6 +56,12 @@ class RoleOut(BaseModel):
     status: str
 
 
+class CurrentUserOut(UserOut):
+    """当前登录用户（登录 / /auth/me 返回）：在 UserOut 之上附带权限码，供前端按钮级鉴权。"""
+
+    permissions: list[str] = Field(default_factory=list)
+
+
 class PermissionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

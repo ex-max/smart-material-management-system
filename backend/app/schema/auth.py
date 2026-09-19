@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from app.schema.user import UserOut
+from app.schema.user import CurrentUserOut
 
 
 class LoginRequest(BaseModel):
@@ -15,4 +15,4 @@ class TokenOut(BaseModel):
 
 
 class LoginResult(TokenOut):
-    user: UserOut
+    user: CurrentUserOut

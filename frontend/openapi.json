@@ -78,7 +78,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_UserOut_"
+                  "$ref": "#/components/schemas/ApiResponse_CurrentUserOut_"
                 }
               }
             }
@@ -7460,6 +7460,39 @@
         ],
         "title": "ApiResponse[ConvertResponse]"
       },
+      "ApiResponse_CurrentUserOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentUserOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ApiResponse[CurrentUserOut]"
+      },
       "ApiResponse_DemandSeriesMetaOut_": {
         "properties": {
           "code": {
@@ -8285,39 +8318,6 @@
         ],
         "title": "ApiResponse[UnitOut]"
       },
-      "ApiResponse_UserOut_": {
-        "properties": {
-          "code": {
-            "type": "integer",
-            "title": "Code"
-          },
-          "message": {
-            "type": "string",
-            "title": "Message"
-          },
-          "data": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/UserOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "trace_id": {
-            "type": "string",
-            "title": "Trace Id",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "code",
-          "message"
-        ],
-        "title": "ApiResponse[UserOut]"
-      },
       "ApiResponse_WarehouseOut_": {
         "properties": {
           "code": {
@@ -8498,6 +8498,97 @@
           "pr_doc_no"
         ],
         "title": "ConvertResult"
+      },
+      "CurrentUserOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "real_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Real Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "dept_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "is_superuser": {
+            "type": "boolean",
+            "title": "Is Superuser"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/RoleBrief"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "real_name",
+          "phone",
+          "email",
+          "dept_name",
+          "status",
+          "is_superuser"
+        ],
+        "title": "CurrentUserOut",
+        "description": "当前登录用户（登录 / /auth/me 返回）：在 UserOut 之上附带权限码，供前端按钮级鉴权。"
       },
       "DeliveryAcceptIn": {
         "properties": {
@@ -10014,7 +10105,7 @@
             "title": "Expires In"
           },
           "user": {
-            "$ref": "#/components/schemas/UserOut"
+            "$ref": "#/components/schemas/CurrentUserOut"
           }
         },
         "type": "object",
@@ -14855,89 +14946,6 @@
           "password"
         ],
         "title": "UserCreate"
-      },
-      "UserOut": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "username": {
-            "type": "string",
-            "title": "Username"
-          },
-          "real_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Real Name"
-          },
-          "phone": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Phone"
-          },
-          "email": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email"
-          },
-          "dept_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dept Name"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "is_superuser": {
-            "type": "boolean",
-            "title": "Is Superuser"
-          },
-          "roles": {
-            "items": {
-              "$ref": "#/components/schemas/RoleBrief"
-            },
-            "type": "array",
-            "title": "Roles"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "username",
-          "real_name",
-          "phone",
-          "email",
-          "dept_name",
-          "status",
-          "is_superuser"
-        ],
-        "title": "UserOut"
       },
       "UserUpdate": {
         "properties": {

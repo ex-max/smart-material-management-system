@@ -218,3 +218,15 @@
 - **回滚**：`git revert <本次提交>`；如需移除 torch：`ml/.venv/bin/pip uninstall -y torch`。
 - **备注**：LSTM 每 origin 从零重训，成本较高，本机 3 seed×40 序列约 20min（2 线程），用 `windows_per_series`/`epochs` 控制；结论只在 Wilcoxon 显著时写"优于"，且必须按象限分层。
 
+## 2026-09-19 · 主数据前端页（M8）
+
+- **改动**：
+  - 后端：新增 `CurrentUserOut`（`UserOut` + `permissions`），登录与 `GET /auth/me` 返回当前用户权限码（超管返回全部）；`tests/test_auth.py` 增 2 条断言（普通用户按角色、超管全量）。
+  - 前端 `src/api/master.ts`：六类主数据 CRUD 封装（list/create/update/delete），类型全部取自 OpenAPI；`src/composables/useAuth.ts` 增 `hasPerm/hasAnyPerm`。
+  - 前端新增 `src/views/master/MasterDataView.vue`（schema 驱动通用视图：关键字/条件筛选、分页、新增/编辑弹窗、删除、按钮按 `material:manage` 隐藏/禁用）与 `masterConfigs.ts`（物资分类/物资/单位/仓库/库位/供应商六类列与表单配置；编辑时禁用更新 DTO 不接受的字段）；`src/router/index.ts` 与 `MainLayout.vue` 增「主数据」子菜单与 `/master/*` 路由；`openapi.json` + `src/api/schema.d.ts` 重新生成。
+- **原因**：`docs/progress.md` 的"下一步" M8 —— 补齐主数据前端页；"按钮按权限置灰"是 M6 遗留已知坑，本次一并由 `/auth/me` 返回权限码解决。
+- **依赖**：**未引入新依赖**（沿用 Element Plus）。
+- **验证**：`make verify` 绿且 0 skip（后端 **66 passed**、前端 lint、ml 61 passed、迁移链可解析、不变量通过）；`npm run typecheck` 与 `npm run build` 通过。
+- **回滚**：`git revert <本次提交>`（前端页面 + 权限字段，无迁移/数据副作用）。
+- **备注**：主数据列表首版为「拉取前 200 条 + 前端内存筛选/分页」；数据量增大时需给后端 list 加筛选参数。本会话范围仅主数据，采购/库存前端留后续切片。
+

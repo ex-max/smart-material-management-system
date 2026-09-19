@@ -1599,6 +1599,19 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[CurrentUserOut] */
+        ApiResponse_CurrentUserOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["CurrentUserOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[DemandSeriesMetaOut] */
         ApiResponse_DemandSeriesMetaOut_: {
             /** Code */
@@ -1924,19 +1937,6 @@ export interface components {
              */
             trace_id: string;
         };
-        /** ApiResponse[UserOut] */
-        ApiResponse_UserOut_: {
-            /** Code */
-            code: number;
-            /** Message */
-            message: string;
-            data?: components["schemas"]["UserOut"] | null;
-            /**
-             * Trace Id
-             * @default
-             */
-            trace_id: string;
-        };
         /** ApiResponse[WarehouseOut] */
         ApiResponse_WarehouseOut_: {
             /** Code */
@@ -1996,6 +1996,32 @@ export interface components {
             converted_pr_id: number | null;
             /** Pr Doc No */
             pr_doc_no: string | null;
+        };
+        /**
+         * CurrentUserOut
+         * @description 当前登录用户（登录 / /auth/me 返回）：在 UserOut 之上附带权限码，供前端按钮级鉴权。
+         */
+        CurrentUserOut: {
+            /** Id */
+            id: number;
+            /** Username */
+            username: string;
+            /** Real Name */
+            real_name: string | null;
+            /** Phone */
+            phone: string | null;
+            /** Email */
+            email: string | null;
+            /** Dept Name */
+            dept_name: string | null;
+            /** Status */
+            status: string;
+            /** Is Superuser */
+            is_superuser: boolean;
+            /** Roles */
+            roles?: components["schemas"]["RoleBrief"][];
+            /** Permissions */
+            permissions?: string[];
         };
         /** DeliveryAcceptIn */
         DeliveryAcceptIn: {
@@ -2369,7 +2395,7 @@ export interface components {
             token_type: string;
             /** Expires In */
             expires_in: number;
-            user: components["schemas"]["UserOut"];
+            user: components["schemas"]["CurrentUserOut"];
         };
         /** MaterialCategoryCreate */
         MaterialCategoryCreate: {
@@ -3514,27 +3540,6 @@ export interface components {
             /** Role Ids */
             role_ids?: number[];
         };
-        /** UserOut */
-        UserOut: {
-            /** Id */
-            id: number;
-            /** Username */
-            username: string;
-            /** Real Name */
-            real_name: string | null;
-            /** Phone */
-            phone: string | null;
-            /** Email */
-            email: string | null;
-            /** Dept Name */
-            dept_name: string | null;
-            /** Status */
-            status: string;
-            /** Is Superuser */
-            is_superuser: boolean;
-            /** Roles */
-            roles?: components["schemas"]["RoleBrief"][];
-        };
         /** UserUpdate */
         UserUpdate: {
             /** Real Name */
@@ -3686,7 +3691,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiResponse_UserOut_"];
+                    "application/json": components["schemas"]["ApiResponse_CurrentUserOut_"];
                 };
             };
         };

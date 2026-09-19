@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**M7 完成**（Docker 一键部署 + 系统/性能测试 + LSTM vs LightGBM 对比；`make verify` 绿且 **0 skip**）—— 方案既定里程碑全部交付。
+- **里程碑**：**M8 主数据前端页完成**（六类主数据 CRUD + 权限置灰；`make verify` 绿且 **0 skip**）。
 - **更新时间**：2026-09-19
 
 ## 已完成
@@ -37,13 +37,15 @@
 
 - [x] **对外展示域名**：宿主 nginx 新增站点 `gra.sukicloud.top` → `127.0.0.1:8080`（复用 `*.sukicloud.top` 泛域名证书；仅新增 vhost、未改其他站点；`server-health` 46→47 PASS）；运维记录见 `/root/dsh/CHANGELOG-ops.md`。
 
+- [x] **M8 主数据前端页（本会话垂直切片）**：新增 schema 驱动通用 CRUD 视图 `frontend/src/views/master/MasterDataView.vue` + 六类配置 `masterConfigs.ts`（物资分类/物资/单位/仓库/库位/供应商）：关键字与分类/仓库/状态筛选、分页、新增/编辑弹窗、删除（软删）、启停用；`src/api/master.ts` 六类 CRUD 封装，接口类型全部由 OpenAPI 生成；后端新增 `CurrentUserOut`，登录与 `/auth/me` 返回 `permissions`，前端 `useAuth.hasPerm` 按 `material:manage` 隐藏/禁用按钮；侧边栏新增「主数据」子菜单与路由（`/master/*`）；**未引入新依赖**。
+
 ## 进行中
 
 - [ ] 无
 
 ## 下一步（只做这一条）
 
-**无（M7 已完成，方案既定里程碑全部交付）**。如需继续：由 `ml/results/` 汇总论文表格/图与答辩演示脚本；对外访问需先与用户确认域名/nginx 反代（当前仅 `127.0.0.1` 本地运行）。
+**采购前端页（请购单 / 采购订单 / 到货单）**：先给 `backend/app/api/v1/purchase.py` 的接口补 `ApiResponse[T]`/`PageOut[T]` 的 `response_model`（参考 `schema/common.py` 与 M6/M8 做法），重跑导出 OpenAPI + `npm run gen:api`；再做只读列表 + 关键动作（请购单提交/审批/转采购订单、采购订单确认、到货单提交）。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -97,6 +99,10 @@
 | M7 性能测试端口 | Locust 用 `--headless`，不启动 Web UI（不占 8089），只对 `HOST`（默认 `127.0.0.1:8000`）发请求；场景全为只读 GET + 登录，不写业务表 | M7 记录 |
 | M7 LSTM 依赖/成本 | torch 为 `ml` 可选依赖（CPU 轮子；装后 venv 约 1.6GB）；LSTM 每 origin 从零重训，本机 3 seed×40 序列约 20min（2 线程），已用 `windows_per_series`/`epochs` 控制成本 | M7 记录 |
 | M7 LSTM vs GBM 结论 | MASE/MAE 上 LSTM 总体显著更优（波动/间歇/块状），但**平滑象限 LightGBM 更优**、sMAPE 总体反向；结论必须分象限、以 MASE/MAE 为准，禁止只报总体 sMAPE | M7 记录 |
+| M8 当前用户权限 | 登录与 `/auth/me` 返回 `CurrentUserOut`（在 `UserOut` 上附带 `permissions`）；`/users` 未加 `response_model`，OpenAPI 不产出 `UserOut`，前端当前用户类型用 `CurrentUserOut` | M8 记录 |
+| M8 主数据列表筛选 | 后端 `master` list 只支持 page/page_size；前端首版为「拉取前 200 条 + 内存筛选/分页」，超过 200 条需后续给后端加关键字/条件查询参数 | M8 记录 |
+| M8 主数据编辑限制 | `MaterialCategoryUpdate` 无 `parent_id`、各 `*Update` 无 `code`、`LocationUpdate` 无 `warehouse_id`；前端这些字段编辑时禁用且不提交 | M8 记录 |
+| M8 前端权限置灰 | 按钮按 `material:manage` 隐藏/禁用；后端 403 仍是最终兜底（不信任前端） | M8 记录 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -116,3 +122,4 @@
 | 2026-09-19 | M7 一键部署：容器启动只跑 `alembic upgrade head` + 幂等 seed（RBAC/管理员）；api/web 只走业务 API，不触碰 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；部署前后业务表零写入；`GET /inventory/reconcile` 口径不变 |
 | 2026-09-19 | M7 系统测试 + Locust 性能：系统测试用测试库覆盖入库过账并断言对账；Locust 场景仅 GET + 登录 | 系统测试 `reconcile.ok=true`；性能测试不写业务表、不改结存 |
 | 2026-09-19 | M7 LSTM 对比：只读合成需求（内存生成），只写 `ml/results/`；未连接/未写业务库表 | 不涉及结存变更；业务表零写入 |
+| 2026-09-19 | M8 主数据前端：仅通过 `/material-categories`、`/materials`、`/units`、`/suppliers`、`/warehouses`、`/locations` API 读写档案，不触碰 `inventory`/`inventory_batch`/`inventory_transaction`；登录返回权限码为只读 | 不涉及结存变更；`GET /inventory/reconcile` 口径不变；SQLite 后端 66 passed |

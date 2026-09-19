@@ -30,3 +30,18 @@ def test_login_wrong_password(client, seeded):
 def test_me_requires_token(client, seeded):
     resp = client.get("/api/v1/auth/me")
     assert resp.status_code == 401
+
+
+def test_login_returns_role_permissions(client, seeded):
+    user = _login(client, "viewer", "viewer123").json()["data"]["user"]
+    assert user["is_superuser"] is False
+    assert "user:view" in user["permissions"]
+    assert "user:create" not in user["permissions"]
+
+
+def test_me_superuser_gets_all_permissions(client, seeded):
+    token = _login(client, "admin", "admin123").json()["data"]["access_token"]
+    me = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer " + token})
+    data = me.json()["data"]
+    assert data["is_superuser"] is True
+    assert {"user:view", "user:create"} <= set(data["permissions"])

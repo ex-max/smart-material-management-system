@@ -30,6 +30,10 @@ npm run build        # typecheck + vite build
 
 `make verify` 第 4 项在检测到 `node_modules` 后会自动跑 `npm run -s lint`。
 
-## 本切片范围（M6）
+## 已实现页面
 
-补货决策页：补货策略维护 + 建议列表/详情（含可用量/ROP/SS/预测值/参数来源/reason）+ 确认/驳回 + 单条/批量一键转请购单。其余业务模块前端后续切片补齐。
+- **登录**：JWT 登录，401 自动跳登录页。
+- **主数据（M8）**：物资分类 / 物资 / 单位 / 仓库 / 库位 / 供应商 六类 CRUD（关键字与条件筛选、分页、新增/编辑弹窗、软删除、启停用）；采用 schema 驱动的通用视图（`src/views/master/MasterDataView.vue` + `masterConfigs.ts`）。按钮按 `material:manage` 隐藏/禁用（后端 403 仍为最终兜底）。
+- **补货决策（M6）**：补货策略维护 + 建议列表/详情（含可用量/ROP/SS/预测值/参数来源/reason）+ 确认/驳回 + 单条/批量一键转请购单。
+
+其余业务模块（采购/库存）前端后续切片补齐。
