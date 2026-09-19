@@ -155,3 +155,17 @@
   - 可解释建议 1800 条（211 条 OPEN），字段与 §12.6 对齐；策略参数 3600 行（A/B × 30 seed × 60 序列）。
 - **回滚**：`git revert <本次提交>`（仅新增 ML 模块/测试/文档，无迁移/数据副作用；`data/`、`ml/results/`、`ml/.venv` 不入库）。
 - **备注**：EOQ 对间歇件会给出远超需求的订货量，仿真改用 `(s,S)` 最小-最大，EOQ 仅作参考量；成本参数为仿真实例设定（本合成数据订货成本主导总成本），`ab_summary.csv` 同时给持有/订货/缺货组件；沙箱 `/dev/shm` 不可写，joblib 仍退化串行。
+
+## 2026-09-19 · 补货决策闭环后端化（M6）
+
+- **改动**：
+  - 新增预测与决策六表 ORM：`backend/app/model/forecast.py`（`demand_series_meta`/`model_registry`/`forecast_run`/`forecast_result`）与 `backend/app/model/replenishment.py`（`replenishment_policy`/`replenishment_suggestion`）；迁移 `0007_forecast_replenishment`（CHECK、唯一/部分唯一索引、`jsonb`、完整 downgrade）。
+  - 新增 `repository`/`schema`/`service`/`api`：预测批次与结果入库（幂等 upsert、`FR-YYYYMMDD-####`、finish）、需求序列元数据 upsert、模型注册；补货策略 CRUD；建议生成/列表/详情/确认/驳回；一键转请购单（含批量）。
+  - 决策口径（M6 定稿，按用户确认）：CSL 服务水平（小数 `0.95`，z=Φ⁻¹(CSL) 用 Acklam 近似，不引入 scipy）；`SS=z·√(LT·σD²+D̂²·σLT²)`、`ROP=D̂·LT+SS`、`S=ROP+D̂·复核周期`；IP=结存−锁定+在途 ≤ ROP 才落库；qty=S−IP 按 `min_order_qty`/`pack_size` 向上取整；EOQ 仅参考；建议须人工确认（OPEN→SUGGESTED）后才能转单，转单生成 DRAFT 请购单并写 `converted_pr_id/converted_at`（来源链）。
+  - `app/service/purchase.py` 抽出 `PurchaseRequisitionService.build()`，使补货转单与请购单创建在同一事务内完成。
+  - 新增权限码 `replenishment:view/manage/convert`（`core/permissions.py` + 种子）；`docs/db-schema.md` §12.5/§12.6 修正 `service_level` 为小数口径并补建议状态口径。
+  - 新增 `tests/test_forecast.py`、`tests/test_replenishment.py`（11 条），`conftest.py` 增 `replenishment_users`。
+- **原因**：`docs/progress.md` 的"下一步" M6 —— 把 M5 的动态 SS/ROP 与可解释建议落成业务库表与 API，打通"读取预测 → 生成建议 → 一键转请购单"闭环；ML 侧仍只读业务库、不写业务表。
+- **验证**：`make verify` 绿（ruff 通过；`pytest 61 passed`；ml 58 passed；迁移链 1455 行；不变量检查通过）。真库：PG16 双跑 61 passed；迁移在全新库 `upgrade→downgrade -1→upgrade` 可逆；`params/metrics/feature_config` 为 `jsonb`；`uq_rs_open`/`uq_replenishment_policy_code` 为部分唯一索引。
+- **回滚**：`git revert <本次提交>`；若已建表，`alembic downgrade 0006_ledger`。
+- **备注**：σLT 库内暂无来源，暂取 0（公式第二项退化）；在途为物料级（复用 `in_transit_by_material`）；S 仅写入 `reason`（§12.6 无该列）。

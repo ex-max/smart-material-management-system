@@ -173,6 +173,49 @@ def inventory_users(db_session, purchase_users):
 
 
 @pytest.fixture()
+def replenishment_users(db_session, seeded):
+    db_session.add_all(
+        [
+            Permission(code=Perm.FORECAST_VIEW, name="查看预测", type="API", sort_no=60),
+            Permission(code=Perm.FORECAST_MANAGE, name="管理预测", type="API", sort_no=61),
+            Permission(code=Perm.REPLENISHMENT_VIEW, name="查看补货建议", type="API", sort_no=70),
+            Permission(code=Perm.REPLENISHMENT_MANAGE, name="管理补货建议", type="API", sort_no=71),
+            Permission(code=Perm.REPLENISHMENT_CONVERT, name="补货建议转请购单", type="API", sort_no=72),
+        ]
+    )
+    db_session.flush()
+    perms = {p.code: p for p in db_session.query(Permission).all()}
+
+    viewer_role = Role(code="R_VIEW", name="补货查看")
+    manager_role = Role(code="R_MANAGE", name="补货管理")
+    converter_role = Role(code="R_CONVERT", name="补货转单")
+    db_session.add_all([viewer_role, manager_role, converter_role])
+    db_session.flush()
+    db_session.add_all(
+        [
+            RolePermission(role_id=viewer_role.id, permission_id=perms[Perm.REPLENISHMENT_VIEW].id),
+            RolePermission(role_id=manager_role.id, permission_id=perms[Perm.REPLENISHMENT_VIEW].id),
+            RolePermission(role_id=manager_role.id, permission_id=perms[Perm.REPLENISHMENT_MANAGE].id),
+            RolePermission(role_id=converter_role.id, permission_id=perms[Perm.REPLENISHMENT_VIEW].id),
+            RolePermission(role_id=converter_role.id, permission_id=perms[Perm.REPLENISHMENT_MANAGE].id),
+            RolePermission(role_id=converter_role.id, permission_id=perms[Perm.REPLENISHMENT_CONVERT].id),
+        ]
+    )
+    accounts = [
+        ("rviewer", viewer_role, "rviewer123"),
+        ("rmanager", manager_role, "rmanager123"),
+        ("rconverter", converter_role, "rconverter123"),
+    ]
+    for username, role, password in accounts:
+        user = User(username=username, password_hash=hash_password(password), real_name=username, status="ACTIVE")
+        db_session.add(user)
+        db_session.flush()
+        db_session.add(UserRole(user_id=user.id, role_id=role.id))
+    db_session.commit()
+    return {u: p for u, _, p in accounts}
+
+
+@pytest.fixture()
 def procurement_master(client, seeded):
     admin = login_headers(client, "admin", "admin123")
     category = client.post("/api/v1/material-categories", headers=admin, json={"code": "C1", "name": "五金"}).json()["data"]

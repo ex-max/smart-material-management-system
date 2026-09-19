@@ -20,6 +20,9 @@ class Perm:
     INVENTORY_MANAGE = "inventory:manage"
     FORECAST_VIEW = "forecast:view"
     FORECAST_MANAGE = "forecast:manage"
+    REPLENISHMENT_VIEW = "replenishment:view"
+    REPLENISHMENT_MANAGE = "replenishment:manage"
+    REPLENISHMENT_CONVERT = "replenishment:convert"
 
 
 # (code, name, type, sort_no)
@@ -39,6 +42,9 @@ PERMISSION_SEED: list[tuple[str, str, str, int]] = [
     (Perm.INVENTORY_MANAGE, "库存作业", "API", 51),
     (Perm.FORECAST_VIEW, "查看预测", "API", 60),
     (Perm.FORECAST_MANAGE, "管理预测", "API", 61),
+    (Perm.REPLENISHMENT_VIEW, "查看补货建议", "API", 70),
+    (Perm.REPLENISHMENT_MANAGE, "管理补货建议", "API", 71),
+    (Perm.REPLENISHMENT_CONVERT, "补货建议转请购单", "API", 72),
 ]
 
 ROLE_ADMIN = "ADMIN"

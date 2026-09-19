@@ -93,7 +93,15 @@ class PurchaseRequisitionService:
         )
 
     def create(self, payload, operator_id: int) -> PurchaseRequisition:
-        obj = PurchaseRequisition(
+        obj = self.build(payload, operator_id)
+        self.repo.add(obj)
+        self.db.commit()
+        self.db.refresh(obj)
+        return obj
+
+    def build(self, payload, operator_id: int) -> PurchaseRequisition:
+        """构造请购单对象但不提交（供 create 与补货建议转单复用，保证同一事务）。"""
+        return PurchaseRequisition(
             doc_no=self.repo.next_doc_no(),
             title=payload.title,
             requester_id=operator_id,
@@ -107,10 +115,6 @@ class PurchaseRequisitionService:
             created_by=operator_id,
             items=[self._build_item(item, idx) for idx, item in enumerate(payload.items, start=1)],
         )
-        self.repo.add(obj)
-        self.db.commit()
-        self.db.refresh(obj)
-        return obj
 
     def update(self, req_id: int, payload) -> PurchaseRequisition:
         obj = self.get(req_id)

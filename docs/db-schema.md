@@ -1156,7 +1156,7 @@ flowchart LR
 | warehouse_id | bigint | NULL, FK→warehouse RESTRICT | 适用仓库（空=全部） |
 | strategy | varchar(16) | NOT NULL, CHECK IN ('FIXED','FORECAST','EOQ','MIN_MAX') | 固定阈值(A)/预测驱动(B)/EOQ/最小-最大 |
 | service_level_type | varchar(16) | NULL, CHECK IN ('CSL','FILL_RATE') | 服务水平口径（M5 定稿：`CSL`，见 ADR-0002） |
-| service_level | numeric(5,2) | NULL, CHECK 0–100 | 目标服务水平 |
+| service_level | numeric(5,2) | NULL, CHECK 0<service_level<1 | 目标服务水平（**小数口径**，如 0.95；与 M5/ADR-0002 的 CSL 一致） |
 | z_value | numeric(6,3) | NULL | 正态分位数（如 95% → 1.645） |
 | review_period_days | int | NULL, CHECK >0 | 检查周期 |
 | order_cost | numeric(18,4) | NULL, CHECK ≥0 | 订货成本 S（EOQ 用） |
@@ -1172,7 +1172,7 @@ flowchart LR
 
 - 约束：UNIQUE (policy_code) WHERE deleted_at IS NULL。
 - 索引：ix_replenishment_policy_(material_id, warehouse_id)。
-- 说明：A/B 仿真靠它切换；取值优先级 material+warehouse > material > 全局（service 层统一）。
+- 说明：A/B 仿真靠它切换；取值优先级 material+warehouse > material > warehouse > 全局（service 层统一，见 `app/repository/replenishment.py::resolve`）。
 
 ### 12.6 replenishment_suggestion 补货建议（可解释）
 
@@ -1209,7 +1209,8 @@ flowchart LR
 
 - 约束：UNIQUE (suggestion_no)；同物料/仓库未处理建议不重复 → 部分唯一 (material_id, warehouse_id) WHERE status IN ('OPEN','SUGGESTED')。
 - 索引：ix_rs_(status, generated_at)、ix_rs_(material_id, warehouse_id)。
-- 说明（AGENTS 不变量 5）：current_qty/in_transit_qty/available_qty/rop/safety_stock/预测值/参数来源（policy_id、forecast_run_id）齐备，天然可解释；reason 存自然语言触发依据。
+- 说明（AGENTS 不变量 5）：current_qty/in_transit_qty/available_qty/rop/safety_stock/预测值/参数来源（policy_id、forecast_run_id）齐备，天然可解释；reason 存自然语言触发依据（含目标库存位置 S=ROP+D̂·复核周期，表内不单列）。
+- 状态口径（M6 定稿）：`OPEN →（人工确认，可改 final_qty）→ SUGGESTED →（一键转单）→ CONVERTED`；`REJECTED/EXPIRED/CLOSED` 为终态旁支；未确认的 OPEN 不允许转单。
 
 ---
 

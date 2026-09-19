@@ -1,4 +1,10 @@
 from app.model.base import PK, AuditMixin, utcnow
+from app.model.forecast import (
+    DemandSeriesMeta,
+    ForecastResult,
+    ForecastRun,
+    ModelRegistry,
+)
 from app.model.inventory import (
     BATCH_DEFAULT_NO,
     InboundItem,
@@ -25,6 +31,7 @@ from app.model.purchase import (
     SupplierDelivery,
     SupplierDeliveryItem,
 )
+from app.model.replenishment import ReplenishmentPolicy, ReplenishmentSuggestion
 from app.model.user import OperationLog, Permission, Role, RolePermission, User, UserRole
 
 __all__ = [
@@ -32,6 +39,12 @@ __all__ = [
     "PK",
     "utcnow",
     "BATCH_DEFAULT_NO",
+    "DemandSeriesMeta",
+    "ForecastResult",
+    "ForecastRun",
+    "ModelRegistry",
+    "ReplenishmentPolicy",
+    "ReplenishmentSuggestion",
     "Location",
     "Material",
     "MaterialCategory",

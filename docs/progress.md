@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**M5 完成**（CSL 服务水平定稿 · 动态 SS/ROP · 可解释补货建议 · A/B 库存仿真 30 seed + Wilcoxon）；下一步 **M6 补货决策闭环后端化（`forecast_*`/`replenishment_*` 表 + API + 一键转请购单）**
+- **里程碑**：**M6 后端完成**（`forecast_*`/`replenishment_*` 六表 + 决策服务 + API + 一键转请购单，SQLite + PG 双跑 61 passed）；下一步 **M6 前端补货建议页（消费 `/replenishment-*` API）**
 - **更新时间**：2026-09-19
 
 ## 已完成
@@ -25,13 +25,15 @@
 - [x] **M4 特征工程 + LightGBM（并补 ARIMA/Croston 分层映射）**：新增 `ml/erp_ml/features.py`（滞后 1/2/3/7/14/28 + 滑动 7/14/28 的 mean/std/nonzero + 截断 days_since_nonzero + 日历 7 维 + 序列静态 4 维 = **27 维**，严格因果）、`gbm.py`（LightGBM 面板全局模型，每 origin 重训 + 递归多步）、`models.py` 增 ARIMA(0,1,1)(Hannan–Rissanen)/Croston/TSB 与 `model_mapping()`、`backtest.py` 增 `backtest_global`、`experiment.py` + `make forecast`，新增 3 个测试文件（ml 27 passed）。`make forecast`（seeds 1–3 × 每 seed 分层 100 序列 × horizon 7/14/30）→ `ml/results/runs/20260919-1051_m4-forecast/`（含 `model_mapping.csv`）。horizon=7 总体 MASE：ma28 0.870 / croston 0.874 / tsb 0.883 / arima 0.895 / lightgbm 0.901 / naive 1.059；分象限 MASE：Croston 间歇 0.914、块状 0.932 优于 naive（1.051/1.044），LightGBM 波动 0.779、平滑 0.895 与 ma28/arima 接近。分层映射：平滑/波动 → LightGBM（对比 ARIMA）；间歇/块状 → Croston（对比 TSB）。
 - [x] **M5 动态 SS/ROP + 可解释补货建议 + A/B 库存仿真**：新增 `ml/erp_ml/service_level.py`（**CSL 口径定稿**，见 ADR-0002：`z=Φ⁻¹(CSL)`、`SS=z·√(LT·σD²+D̂²·σLT²)`、`ROP=D̂·LT+SS`；Fill Rate 仅作输出指标）、`inventory.py`（固定/动态 `(s,S)` 最小-最大 + 日度 backorder 仿真 + 成本）、`forecast_layer.py`（复用 M4 象限映射：平滑/波动→LightGBM、间歇/块状→Croston，每 origin 重训）、`replenishment.py`（建议字段对齐 `db-schema.md` §12.6，含可用/ROP/S/SS/预测值/参数来源/reason）、`sim_experiment.py` + `make simulate`，新增 4 个测试文件（ml 58 passed）。`make simulate` 跑 **30 seed × 每 seed 分层 60 序列 × 130 origins**：A（固定 SS/ROP，用 180 天历史均值/σ）vs B（预测驱动动态 SS/ROP），同需求/同提前期随机流配对 → `ml/results/runs/20260919-1246_m5-simulation/`。**30 seed 配对 Wilcoxon**：总成本 B 比 A 低 **424.85**（p<1e-6）、缺货率低 **0.0038**（p<1e-6）、Fill Rate 高 **0.0051**（p=1.1e-4）、缺货损失低 **30.10**（p=6.5e-5）、订货次数少 **3.97**（p<1e-6）；平均库存/持有成本略升（+2.93 / +2.19，均显著），**CSL 差异不显著**（-9.7e-5，p=0.211）；分象限四象限总成本与 Fill Rate 均 B 更优。产出 `policy_metrics.csv`/`ab_summary.csv`/`policies.csv`/`replenishment_suggestions.csv`（1800 条、211 条 OPEN）/`cost_service_tradeoff.csv` + 3 张 300dpi 图。
 
+- [x] **M6 补货决策闭环后端化（后端切片）**：新增预测与决策六表 ORM（`app/model/forecast.py`/`replenishment.py`：`demand_series_meta`/`model_registry`/`forecast_run`/`forecast_result`/`replenishment_policy`/`replenishment_suggestion`）+ 迁移 `0007_forecast_replenishment`（CHECK、唯一与部分唯一索引、完整 downgrade，PG 上 `upgrade→downgrade -1→upgrade` 可逆、`jsonb`/`postgresql_where` 生效）；分层实现：预测批次/结果入库（幂等 upsert、`FR-YYYYMMDD-####`）、需求序列元数据 upsert、模型注册；补货策略 CRUD；**决策服务**读取 `forecast_result`（最新 SUCCESS/PARTIAL 批次均值 D̂）+ `demand_series_meta.std_daily`（σD），按 CSL 公式 `SS=z·√(LT·σD²+D̂²·σLT²)`、`ROP=D̂·LT+SS`、`S=ROP+D̂·复核周期` 生成可解释建议（IP=结存−锁定+在途 ≤ ROP 才落库，qty=S−IP 按 min_order_qty/pack_size 向上取整，EOQ 仅参考，reason 含公式/可用量/参数来源）；建议确认（OPEN→SUGGESTED，可改 final_qty）/驳回；**一键转请购单**（SUGGESTED→CONVERTED，生成 DRAFT 请购单并写 `converted_pr_id/converted_at`，走既有状态机）；新增权限码 `replenishment:view/manage/convert`；新增 `tests/test_forecast.py`/`tests/test_replenishment.py`（11 条）。
+
 ## 进行中
 
 - [ ] 无
 
 ## 下一步（只做这一条）
 
-**M6：补货决策闭环后端化** —— 建 `forecast_*` / `replenishment_*` 表（Alembic 迁移），实现"读取预测 → 动态 SS/ROP → 生成可解释补货建议 → 一键转请购单"的 API（`service_level_type='CSL'`，字段与 M5 的 `replenishment_suggestions.csv` 对齐），前端加补货建议页。ML 侧仍**只读业务库、不写业务表**。
+**M6 前端补货建议页** —— 后端 M6 已就绪：接口类型从 `/api/openapi.json` 生成（勿手写）；页面覆盖补货策略维护 + 建议列表/详情（展示 `rop`/`safety_stock`/`daily_demand_hat`/`available_qty`/`policy_id`/`forecast_run_id`/`reason`）+ 确认/驳回 + 一键转请购单；复用既有权限码 `replenishment:view/manage/convert`。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -39,7 +41,7 @@
 
 | 项 | 说明 | 状态 |
 |---|---|---|
-| 运行库实例 | 已起独立 PG16 容器（`deploy/docker-compose.yml`，仅 127.0.0.1:5433）。真库验证：迁移 upgrade/downgrade 可逆、`jsonb`、`postgresql_where` 部分唯一索引、`COALESCE` 表达式唯一索引；测试支持 `ERP_TEST_DATABASE_URL` 对 PG 跑（50 passed） | 已解决（2026-09-18） |
+| 运行库实例 | 已起独立 PG16 容器（`deploy/docker-compose.yml`，仅 127.0.0.1:5433）。真库验证：迁移 upgrade/downgrade 可逆、`jsonb`、`postgresql_where` 部分唯一索引、`COALESCE` 表达式唯一索引；测试支持 `ERP_TEST_DATABASE_URL` 对 PG 跑（M6 起 61 passed） | 已解决（2026-09-18） |
 | 本机 Python 环境 | 系统缺 `python3-venv`，venv 用 `--without-pip` + get-pip 引导 | 已解决（backend/README.md） |
 | 单据状态机 | 已实现：`core/state_machine.py` 单一事实来源（全局 6 态 + 7 类单据迁移边 + 权限码；仅请购单审批）；`apply_transition` 为唯一写 status 入口 | M2-a 完成 |
 | 到货→入库联动 | 已实现：验收通过生成入库单，过账写流水并回写 PO 到货数量/状态 | M2-b 完成 |
@@ -65,6 +67,12 @@
 | M5 EOQ 不适配间歇件 | EOQ 对低需求 SKU 会给出远超需求的订货量；M5 仿真改用 `(s,S)` 最小-最大（`S=ROP+D̂·复核周期`），EOQ 仅作参考量报告 | M5 记录 |
 | M5 成本参数口径 | `order_cost` / `holding_cost_rate` / `stockout_penalty_rate` 为仿真实例设定（默认 100 / 0.20 / 0.5）；本合成数据单价小、订货成本主导总成本，故 `ab_summary.csv` 同时给持有/订货/缺货组件 | M5 记录 |
 | M5 CSL 实收 vs 目标 | 正态近似 SS 在事件冲击/过度离散需求下，目标 CSL=0.95 的实收 CSL 偏低（需以仿真结果为准，论文只对**显著**差异写"优于"） | M5 记录 |
+| M6 σLT 来源 | `replenishment_suggestion.sigma_lt` 库内暂无提前期波动数据，决策服务取 0（SS 公式第二项退化）；如需真实 σLT，应从历史提前期或供货价提前期估计 | M6 记录 |
+| M6 service_level 量纲 | `replenishment_policy.service_level` 统一存小数（0<x<1，如 0.95），已同步修正 `db-schema.md §12.5`；z=Φ⁻¹(CSL) 用 Acklam 近似，未为此引入 scipy | M6 记录 |
+| M6 在途口径 | 建议的 `in_transit_qty` 复用 `POItemRepo.in_transit_by_material()`（物料级、无仓库维度），与日快照口径一致 | M6 记录 |
+| M6 下单量口径 | 按 M5 结论用 `(s,S)` 最小-最大（qty=S−IP），EOQ 仅作参考量；建议须人工确认（SUGGESTED）后才可转请购单 | M6 记录 |
+| M6 提前期取值 | 决策服务提前期 = policy.lead_time_days > material.lead_time_days；暂未接入 §8 的供货价/供应商提前期优先级 | M6 记录 |
+| M6 S（order_up_to）落点 | §12.6 无 `order_up_to` 列，S 写入 `reason` 文本；如需单独落库再加列 | M6 记录 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -79,3 +87,4 @@
 | 2026-09-19 | M3 数据生成只写 `data/`，预测只读业务库且只写 `ml/results/`；未触及 `inventory`/`inventory_transaction`/`forecast_*` | 不涉及结存变更；业务表零写入 |
 | 2026-09-19 | M4 特征/GBM 实验只读合成数据与 `ml/results/`；未连接/未写业务库表，未触及 `inventory`/`inventory_transaction`/`forecast_*` | 不涉及结存变更；业务表零写入 |
 | 2026-09-19 | M5 库存仿真：只读合成需求（内存生成，不重写 `data/`）与 `ml/results/`；未连接业务库，未写 `inventory`/`inventory_transaction`/`forecast_*`/`replenishment_*`；补货建议/策略仅为 ML 结果表（字段对齐 §12.5/§12.6） | 不涉及结存变更；业务表零写入 |
+| 2026-09-19 | M6 决策服务只读 `inventory`（结存/锁定）与在途汇总，生成 `replenishment_*` 建议；不写 `inventory`/`inventory_batch`/`inventory_transaction`，不改变结存 | 不涉及结存变更；`GET /inventory/reconcile` 口径不变；SQLite + PG 双跑 61 passed |
