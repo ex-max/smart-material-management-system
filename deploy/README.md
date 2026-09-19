@@ -49,7 +49,14 @@ make down
 | db (postgres) | 5432 | `127.0.0.1:5433` | 直连调试 |
 
 改端口：编辑 `deploy/.env` 的 `ERP_WEB_PORT` 后 `make down && make up`。
-**只允许 127.0.0.1**；如需对外，请走已有 nginx 站点另行加反代（需先与用户确认，本切片未做）。
+容器入口仍只绑定 `127.0.0.1:8080`；对外访问由**宿主 nginx** 反代到该回环端口（见下）。
+
+## 对外访问（宿主 nginx）
+
+- 域名：**https://gra.sukicloud.top**（HTTP 与 HTTPS 均可；泛域名证书 `*.sukicloud.top` 覆盖）。
+- 宿主 nginx 站点：`/www/server/panel/vhost/nginx/gra.sukicloud.top.conf`，
+  `location /` → `http://127.0.0.1:8080`（参数对齐 `newapi.sukicloud.top.conf`；仅新增该文件，不改其他站点）。
+- 前置条件：ERP 栈运行中（`make up`）；运维变更/回滚见 `/root/dsh/CHANGELOG-ops.md`（2026-09-19 条目）。
 
 ## 连接串与配置
 

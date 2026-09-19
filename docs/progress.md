@@ -35,6 +35,8 @@
 
 - [x] **M7 子切片 3（余力）：LSTM 与 LightGBM 对比**：新增 `ml/erp_ml/lstm.py`（面板级 LSTM：`log1p`+逐序列标准化、均值/方差只用历史、每 origin 从零重训、递归多步、固定种子）与 `lstm_experiment.py`（**复用** `backtest_global` 的 rolling-origin 协议，输出 `comparison.csv` 配对差值与 Wilcoxon）、`ml/tests/test_lstm.py`（3 条）；torch 为 `ml` **可选依赖**（CPU 轮子，`make ml-lstm`）。`make lstm`（seeds 1–3 × 每 seed 分层 40 序列 × horizon 7/14/30）→ `ml/results/runs/20260919-1715_m7-lstm/`。horizon=7（配对 n=120）：**MASE LSTM 0.831 vs LightGBM 0.902（Δ=-0.071，p=1.8e-7）**、**MAE 3.65 vs 4.02（p=2.3e-10）**；分象限 LSTM 在波动/间歇/块状更优，**平滑象限 LightGBM 更优**；sMAPE 总体反向（109.2 vs 100.2），属零值多的 sMAPE 陷阱，以 MASE/MAE 为准。
 
+- [x] **对外展示域名**：宿主 nginx 新增站点 `gra.sukicloud.top` → `127.0.0.1:8080`（复用 `*.sukicloud.top` 泛域名证书；仅新增 vhost、未改其他站点；`server-health` 46→47 PASS）；运维记录见 `/root/dsh/CHANGELOG-ops.md`。
+
 ## 进行中
 
 - [ ] 无
@@ -91,6 +93,7 @@
 | M7 访问方式 | 一键部署默认 `http://127.0.0.1:8080`（`deploy/.env` 的 `ERP_WEB_PORT` 可改）；**仅回环**，未做对外域名反代（需用户确认后再加） | M7 记录（待确认） |
 | M7 alembic 日志 | `alembic current/upgrade` 会先打印两行格式模板字面量（`%(levelname)...`），为 `alembic.ini` 既有现象，迁移功能正常 | 既有 |
 | M7 部署边界 | 容器只跑 `alembic upgrade head` + 幂等 seed；api 不对宿主暴露；web 容器内 nginx 与宿主 nginx 无关 | M7 记录 |
+| M7 对外访问 | 宿主 nginx 站点 `gra.sukicloud.top` 反代到 `127.0.0.1:8080`（复用泛域名证书）；容器仍只回环，按 `newapi.sukicloud.top.conf` 参数新增，未改其他站点。回滚见 CHANGELOG-ops | M7 完成 |
 | M7 性能测试端口 | Locust 用 `--headless`，不启动 Web UI（不占 8089），只对 `HOST`（默认 `127.0.0.1:8000`）发请求；场景全为只读 GET + 登录，不写业务表 | M7 记录 |
 | M7 LSTM 依赖/成本 | torch 为 `ml` 可选依赖（CPU 轮子；装后 venv 约 1.6GB）；LSTM 每 origin 从零重训，本机 3 seed×40 序列约 20min（2 线程），已用 `windows_per_series`/`epochs` 控制成本 | M7 记录 |
 | M7 LSTM vs GBM 结论 | MASE/MAE 上 LSTM 总体显著更优（波动/间歇/块状），但**平滑象限 LightGBM 更优**、sMAPE 总体反向；结论必须分象限、以 MASE/MAE 为准，禁止只报总体 sMAPE | M7 记录 |
