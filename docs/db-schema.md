@@ -1155,7 +1155,7 @@ flowchart LR
 | material_id | bigint | NULL, FK→material RESTRICT | 适用物料（空=全局） |
 | warehouse_id | bigint | NULL, FK→warehouse RESTRICT | 适用仓库（空=全部） |
 | strategy | varchar(16) | NOT NULL, CHECK IN ('FIXED','FORECAST','EOQ','MIN_MAX') | 固定阈值(A)/预测驱动(B)/EOQ/最小-最大 |
-| service_level_type | varchar(16) | NULL, CHECK IN ('CSL','FILL_RATE') | 服务水平口径（M5 定稿，全程一致） |
+| service_level_type | varchar(16) | NULL, CHECK IN ('CSL','FILL_RATE') | 服务水平口径（M5 定稿：`CSL`，见 ADR-0002） |
 | service_level | numeric(5,2) | NULL, CHECK 0–100 | 目标服务水平 |
 | z_value | numeric(6,3) | NULL | 正态分位数（如 95% → 1.645） |
 | review_period_days | int | NULL, CHECK >0 | 检查周期 |
@@ -1346,7 +1346,7 @@ SELECT * FROM inventory WHERE quantity < 0 OR quantity < locked_qty;
 | # | 问题 | 结论（已采纳，实现按此） |
 |---|---|---|
 | M1B-Q1 | 数据范围权限 | 本期只做功能权限 RBAC（MENU/API/BUTTON）；DATA 类型权限码仅预留，不做行级隔离 |
-| M1B-Q2 | 服务水平口径 CSL / Fill Rate | 由 replenishment_policy.service_level_type 承载；M5 前定稿并全程一致 |
+| M1B-Q2 | 服务水平口径 CSL / Fill Rate | **M5 已定稿：CSL**（`service_level_type='CSL'`，z=Φ⁻¹(CSL)，默认 0.95）；Fill Rate 仅作仿真输出对比。见 ADR-0002 |
 | M1B-Q3 | 供货价历史版本化 | 本期单条当前价（valid_from/valid_to 预留）；需要历史再加价格历史表 |
 | M1B-Q4 | 日快照保留期 | 3 年（与生成数据一致），超期归档 |
 | M1B-Q5 | 附件存储 | 本期本地磁盘（storage=LOCAL + 相对路径），后续可换对象存储 |

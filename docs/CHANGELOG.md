@@ -136,3 +136,22 @@
   - 依赖安装的健康检查前后一致（29 通过 / 0 警告 / 1 项既有 FAIL），见 `/root/dsh/CHANGELOG-ops.md`。
 - **回滚**：`git revert <本次提交>`；如需移除依赖：`ml/.venv/bin/pip uninstall -y lightgbm`（`data/`、`ml/results/`、`ml/.venv` 均不入库）。
 - **备注**：ETS 单序列实测每 seed 约 22–27min（M3 记录的 4.8s/序列偏低），故 M4 默认不含 ets，ETS 基线仍以 M3 run 为准；ARIMA 用 Hannan–Rissanen 以避免每 origin 的 MLE 开销。
+
+## 2026-09-19 · 动态 SS/ROP + 可解释补货建议 + A/B 库存仿真（M5）
+
+- **改动**：
+  - 服务水平口径定稿（新增 `docs/adr/0002-service-level.md`）：主口径 **CSL**，`z=Φ⁻¹(CSL)`、`SS=z·√(LT·σD²+D̂²·σLT²)`、`ROP=D̂·LT+SS`；Fill Rate 仅作仿真输出指标；`replenishment_policy.service_level_type` 固定 `'CSL'`。
+  - 新增 `ml/erp_ml/service_level.py`：`z_for_csl`、`ServiceLevelSpec`（CSL 为主，Fill Rate 仅讨论）、`describe()`。
+  - 新增 `ml/erp_ml/inventory.py`：SS/ROP/EOQ 公式、对数正态提前期 σLT、固定策略（历史均值/σ）与动态策略（预测 D̂ + 滚动 σD）、`(s,S)` 最小-最大下单、日度 backorder 仿真与成本（持有/订货/缺货/总成本）；CSL 只在评估窗口内的订货周期上统计。
+  - 新增 `ml/erp_ml/forecast_layer.py`：复用 M4 分层映射产出每 origin 的滚动预测（平滑/波动→LightGBM，间歇/块状→Croston）。
+  - 新增 `ml/erp_ml/replenishment.py`：可解释补货建议/策略参数，字段对齐 `docs/db-schema.md` §12.5/§12.6（可用量/ROP/S/SS/EOQ/预测值/参数来源/reason）。
+  - 新增 `ml/erp_ml/sim_experiment.py` 与 `make simulate`；新增测试 `test_service_level.py`/`test_inventory.py`/`test_replenishment.py`/`test_forecast_layer.py`/`test_sim_summary.py`。
+  - `Makefile` 加 `simulate`；`ml/README.md` 补 M5 章节；`docs/db-schema.md` §12.5/§15 标注 CSL 定稿。
+- **原因**：`docs/progress.md` 的"下一步" M5 —— 把 M4 预测接入 `SS/ROP=f(需求波动, 提前期, 服务水平)`，生成可解释补货建议，并按 forecast-experiment 技能用多种子 A/B 仿真 + Wilcoxon 检验业务收益。
+- **验证**：
+  - `make verify` 绿：后端 ruff + pytest 50 passed；ml ruff + pytest 58 passed；迁移链 1155 行；不变量检查通过。
+  - `make simulate`（30 seed × 每 seed 分层 60 序列 × 130 origins，A 固定 vs B 预测驱动，同需求/同提前期配对）→ `ml/results/runs/20260919-1246_m5-simulation/`（config / policy_metrics / summary=ab_summary / policies / replenishment_suggestions / cost_service_tradeoff / segments / figures）。
+  - 30 seed 配对 Wilcoxon（n=1800）：总成本 B 比 A 改善 **424.85**（p<1e-6）、缺货率 **0.0038**（p<1e-6）、Fill Rate **0.0051**（p=1.1e-4）、缺货损失 **30.10**（p=6.5e-5）、订货次数 **3.97**（p<1e-6）；平均库存/持有成本分别变差 2.93/2.19（均显著），CSL 差异不显著（p=0.211）；四象限总成本与 Fill Rate 均 B 更优。
+  - 可解释建议 1800 条（211 条 OPEN），字段与 §12.6 对齐；策略参数 3600 行（A/B × 30 seed × 60 序列）。
+- **回滚**：`git revert <本次提交>`（仅新增 ML 模块/测试/文档，无迁移/数据副作用；`data/`、`ml/results/`、`ml/.venv` 不入库）。
+- **备注**：EOQ 对间歇件会给出远超需求的订货量，仿真改用 `(s,S)` 最小-最大，EOQ 仅作参考量；成本参数为仿真实例设定（本合成数据订货成本主导总成本），`ab_summary.csv` 同时给持有/订货/缺货组件；沙箱 `/dev/shm` 不可写，joblib 仍退化串行。

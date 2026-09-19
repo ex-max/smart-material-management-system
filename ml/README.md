@@ -27,6 +27,7 @@ curl -fsSL -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py
 | `make gen-data` | 生成 seed=1、800 SKU×3 年日需求 → `data/seed_1/` |
 | `make baseline` | 基线滚动回测（Naive / 季节 Naive / MA7 / MA28 / ETS）→ `ml/results/` |
 | `make forecast` | M4 预测实验（滞后/滑动/日历特征 + LightGBM + Croston/TSB/ARIMA，按象限映射）→ `ml/results/` |
+| `make simulate` | M5 动态 SS/ROP + 补货建议 + A/B 库存仿真（30 seed + Wilcoxon）→ `ml/results/` |
 | `make ml-test` / `make ml-lint` | ML 单元测试 / lint |
 
 也可直接运行：
@@ -120,6 +121,49 @@ make forecast 默认不跑 ETS（单序列慢，M3 基线已含，可用 --local
 映射（models.model_mapping()）：平滑/波动 → LightGBM（对比 ARIMA）；间歇/块状 → Croston（对比 TSB）。
 回测口径与 M3 完全一致（rolling-origin、初始训练窗 180、步长 7、horizon 7/14/30，sMAPE/MASE）。
 
+## 库存决策与 A/B 仿真（M5）
+
+实现：`erp_ml/service_level.py`（口径）、`inventory.py`（SS/ROP/EOQ + 日度仿真）、
+`forecast_layer.py`（复用 M4 象限映射的滚动预测）、`replenishment.py`（可解释建议）、
+`sim_experiment.py`（CLI）。
+
+### 服务水平口径（定稿）
+
+- **主口径 CSL（周期服务水平）**：`z = Φ⁻¹(CSL)`，
+  `SS = z·√(LT·σD² + D̂²·σLT²)`，`ROP = D̂·LT + SS`。
+- **Fill Rate（β 满足率）**取决于订货批量与缺货量，不是上面 SS 闭式解的输入，
+  只作为**仿真输出指标**报告与讨论，不作目标口径。
+- 口径由 `replenishment_policy.service_level_type = 'CSL'` 承载；
+  每次实验 `config.json` 记录 `service_level_type` 与 `z_value`，保证全程一致。
+
+### 策略与仿真协议
+
+| 策略 | SS/ROP 来源 | 说明 |
+|---|---|---|
+| A 固定（对照） | 初始训练窗（180 天）均值/标准差一次性设定 | 规则驱动 |
+| B 预测驱动（本文） | 每个 rolling origin 用分层模型预测的 D̂ + 近 56 天滚动 σD 重算 | 预测驱动 |
+
+- 补货用 `(s,S)` 最小-最大：`S = ROP + D̂·复核周期`，库存位置 ≤ ROP 时抬到 S；
+  EOQ 仅作参考量报告（间歇件 EOQ 常远大于需求，直接下单不现实）。
+- 需求按 **backorder** 模式仿真，提前期用对数正态；
+  A/B **同 seed、同需求实现、同提前期随机流**配对，评估窗口丢弃前 30 天预热。
+- 指标：缺货率 / Fill Rate / CSL / 平均库存 / 周转天数 / 持有成本 / 订货次数与成本 /
+  缺货成本 / 总成本，按 ADI/CV² 象限分层。
+
+### 统计严谨性
+
+- 多种子：`seed 1..30`，报**均值 ± 标准差**；每 seed 按象限分层抽 60 条序列。
+- 配对检验：对每个 `(seed, SKU×仓库)` 的 A/B 差做 **Wilcoxon 符号秩检验**
+  （two-sided），报 p 值；**只在 p<0.05 时写"优于"**，否则写"差异不显著"。
+- 分层报告：总体 + 平滑/波动/间歇/块状，避免被少数大 SKU 主导。
+
+### 可解释补货建议
+
+`replenishment_suggestions.csv` 每条给出：当前结存 / 锁定 / 在途 / 欠交 / 可用、
+预测日均 D̂、LT、σD、σLT、SS、ROP、S、EOQ、建议量、
+`parameter_source`（策略 / 模型 / 象限 / 服务水平口径 / z）与自然语言 `reason`；
+字段与 `docs/db-schema.md` §12.6 对齐（ML 侧只出结果表，不写业务表）。
+
 ## 结果落盘（`ml/results/`）
 
 ```
@@ -135,10 +179,21 @@ ml/results/
 └── latest -> runs/<最新>/
 ```
 
+`make simulate`（M5）额外产物（同一 `runs/<id>`）：
+
+```
+├── policy_metrics.csv            # 逐 seed × 序列 × 策略指标明细
+├── ab_summary.csv                # 分层 A/B 汇总（均值±标准差 + Wilcoxon p）
+├── policies.csv                  # 策略参数（A 固定 / B 预测）
+├── replenishment_suggestions.csv # 可解释补货建议（对应 §12.6 字段）
+├── cost_service_tradeoff.csv     # 策略 B 扫描目标 CSL 的成本-服务权衡
+└── figures/inventory_trajectory.png / ab_metrics.png / cost_service_tradeoff.png
+```
+
 > 论文每张表/图都能追到某个 `runs/<id>`；**禁止手改结果文件**。
 
 ## 已实现 / 待实现
 
 - [x] M3：数据生成器 + 需求分层 + Naive/MA/ETS 基线滚动回测
 - [x] M4：滞后/滑动/日历特征 + LightGBM 面板模型 + Croston/TSB/ARIMA 与 ADI/CV² 分层映射
-- [ ] M5：动态 SS/ROP、补货建议、A/B 库存仿真（多种子 + Wilcoxon）
+- [ ] M5：动态 SS/ROP、补货建议、A/B 库存仿真（多种子 + Wilcoxon）—— 见上「库存决策与 A/B 仿真」
