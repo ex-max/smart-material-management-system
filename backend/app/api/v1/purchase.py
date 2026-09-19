@@ -9,6 +9,7 @@ from app.core.state_machine import Actions, DocTypes, get_transition
 from app.model.user import User
 from app.schema import inventory as ivs
 from app.schema import purchase as ps
+from app.schema.common import ApiResponse, PageOut
 from app.service.inventory import InboundService
 from app.service.purchase import PurchaseOrderService, PurchaseRequisitionService, SupplierDeliveryService
 
@@ -37,7 +38,11 @@ _RCV_ACCEPT = require_perm(get_transition(_RCV, Actions.ACCEPT).permission)
 
 
 # ---------------- 请购单 ----------------
-@router.get("/purchase-requisitions", name="list_purchase_requisitions")
+@router.get(
+    "/purchase-requisitions",
+    name="list_purchase_requisitions",
+    response_model=ApiResponse[PageOut[ps.PROut]],
+)
 def list_requisitions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -49,7 +54,12 @@ def list_requisitions(
     return ok({"total": total, "items": [ps.PROut.model_validate(x).model_dump() for x in items]})
 
 
-@router.post("/purchase-requisitions", status_code=201, name="create_purchase_requisition")
+@router.post(
+    "/purchase-requisitions",
+    status_code=201,
+    name="create_purchase_requisition",
+    response_model=ApiResponse[ps.PROut],
+)
 def create_requisition(
     payload: ps.PRCreate,
     user: User = Depends(_REQ_MANAGE),
@@ -58,12 +68,14 @@ def create_requisition(
     return ok(ps.PROut.model_validate(PurchaseRequisitionService(db).create(payload, user.id)).model_dump())
 
 
-@router.get("/purchase-requisitions/{req_id}", name="get_purchase_requisition")
+@router.get("/purchase-requisitions/{req_id}", name="get_purchase_requisition", response_model=ApiResponse[ps.PROut])
 def get_requisition(req_id: int, user: User = Depends(_VIEW), db: Session = Depends(get_db)):
     return ok(ps.PROut.model_validate(PurchaseRequisitionService(db).get(req_id)).model_dump())
 
 
-@router.put("/purchase-requisitions/{req_id}", name="update_purchase_requisition")
+@router.put(
+    "/purchase-requisitions/{req_id}", name="update_purchase_requisition", response_model=ApiResponse[ps.PROut]
+)
 def update_requisition(
     req_id: int,
     payload: ps.PRUpdate,
@@ -79,17 +91,29 @@ def delete_requisition(req_id: int, user: User = Depends(_REQ_MANAGE), db: Sessi
     return ok(None)
 
 
-@router.post("/purchase-requisitions/{req_id}/submit", name="submit_purchase_requisition")
+@router.post(
+    "/purchase-requisitions/{req_id}/submit",
+    name="submit_purchase_requisition",
+    response_model=ApiResponse[ps.PROut],
+)
 def submit_requisition(req_id: int, user: User = Depends(_REQ_SUBMIT), db: Session = Depends(get_db)):
     return ok(ps.PROut.model_validate(PurchaseRequisitionService(db).submit(req_id)).model_dump())
 
 
-@router.post("/purchase-requisitions/{req_id}/approve", name="approve_purchase_requisition")
+@router.post(
+    "/purchase-requisitions/{req_id}/approve",
+    name="approve_purchase_requisition",
+    response_model=ApiResponse[ps.PROut],
+)
 def approve_requisition(req_id: int, user: User = Depends(_REQ_APPROVE), db: Session = Depends(get_db)):
     return ok(ps.PROut.model_validate(PurchaseRequisitionService(db).approve(req_id, user.id)).model_dump())
 
 
-@router.post("/purchase-requisitions/{req_id}/cancel", name="cancel_purchase_requisition")
+@router.post(
+    "/purchase-requisitions/{req_id}/cancel",
+    name="cancel_purchase_requisition",
+    response_model=ApiResponse[ps.PROut],
+)
 def cancel_requisition(
     req_id: int,
     payload: ps.CancelIn | None = None,
@@ -100,7 +124,11 @@ def cancel_requisition(
     return ok(ps.PROut.model_validate(PurchaseRequisitionService(db).cancel(req_id, user.id, reason)).model_dump())
 
 
-@router.post("/purchase-requisitions/{req_id}/convert-to-po", name="convert_purchase_requisition")
+@router.post(
+    "/purchase-requisitions/{req_id}/convert-to-po",
+    name="convert_purchase_requisition",
+    response_model=ApiResponse[ps.POOut],
+)
 def convert_requisition(
     req_id: int,
     payload: ps.PRConvertIn,
@@ -112,7 +140,7 @@ def convert_requisition(
 
 
 # ---------------- 采购订单 ----------------
-@router.get("/purchase-orders", name="list_purchase_orders")
+@router.get("/purchase-orders", name="list_purchase_orders", response_model=ApiResponse[PageOut[ps.POOut]])
 def list_orders(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -124,17 +152,17 @@ def list_orders(
     return ok({"total": total, "items": [ps.POOut.model_validate(x).model_dump() for x in items]})
 
 
-@router.post("/purchase-orders", status_code=201, name="create_purchase_order")
+@router.post("/purchase-orders", status_code=201, name="create_purchase_order", response_model=ApiResponse[ps.POOut])
 def create_order(payload: ps.POCreate, user: User = Depends(_PO_MANAGE), db: Session = Depends(get_db)):
     return ok(ps.POOut.model_validate(PurchaseOrderService(db).create(payload, user.id)).model_dump())
 
 
-@router.get("/purchase-orders/{po_id}", name="get_purchase_order")
+@router.get("/purchase-orders/{po_id}", name="get_purchase_order", response_model=ApiResponse[ps.POOut])
 def get_order(po_id: int, user: User = Depends(_VIEW), db: Session = Depends(get_db)):
     return ok(ps.POOut.model_validate(PurchaseOrderService(db).get(po_id)).model_dump())
 
 
-@router.put("/purchase-orders/{po_id}", name="update_purchase_order")
+@router.put("/purchase-orders/{po_id}", name="update_purchase_order", response_model=ApiResponse[ps.POOut])
 def update_order(
     po_id: int,
     payload: ps.POUpdate,
@@ -150,12 +178,12 @@ def delete_order(po_id: int, user: User = Depends(_PO_MANAGE), db: Session = Dep
     return ok(None)
 
 
-@router.post("/purchase-orders/{po_id}/confirm", name="confirm_purchase_order")
+@router.post("/purchase-orders/{po_id}/confirm", name="confirm_purchase_order", response_model=ApiResponse[ps.POOut])
 def confirm_order(po_id: int, user: User = Depends(_PO_CONFIRM), db: Session = Depends(get_db)):
     return ok(ps.POOut.model_validate(PurchaseOrderService(db).confirm(po_id, user.id)).model_dump())
 
 
-@router.post("/purchase-orders/{po_id}/cancel", name="cancel_purchase_order")
+@router.post("/purchase-orders/{po_id}/cancel", name="cancel_purchase_order", response_model=ApiResponse[ps.POOut])
 def cancel_order(
     po_id: int,
     payload: ps.CancelIn | None = None,
@@ -167,7 +195,9 @@ def cancel_order(
 
 
 # ---------------- 到货/验收单 ----------------
-@router.get("/supplier-deliveries", name="list_supplier_deliveries")
+@router.get(
+    "/supplier-deliveries", name="list_supplier_deliveries", response_model=ApiResponse[PageOut[ps.DeliveryOut]]
+)
 def list_deliveries(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -179,17 +209,23 @@ def list_deliveries(
     return ok({"total": total, "items": [ps.DeliveryOut.model_validate(x).model_dump() for x in items]})
 
 
-@router.post("/supplier-deliveries", status_code=201, name="create_supplier_delivery")
+@router.post(
+    "/supplier-deliveries", status_code=201, name="create_supplier_delivery", response_model=ApiResponse[ps.DeliveryOut]
+)
 def create_delivery(payload: ps.DeliveryCreate, user: User = Depends(_RCV_MANAGE), db: Session = Depends(get_db)):
     return ok(ps.DeliveryOut.model_validate(SupplierDeliveryService(db).create(payload, user.id)).model_dump())
 
 
-@router.get("/supplier-deliveries/{delivery_id}", name="get_supplier_delivery")
+@router.get(
+    "/supplier-deliveries/{delivery_id}", name="get_supplier_delivery", response_model=ApiResponse[ps.DeliveryOut]
+)
 def get_delivery(delivery_id: int, user: User = Depends(_VIEW), db: Session = Depends(get_db)):
     return ok(ps.DeliveryOut.model_validate(SupplierDeliveryService(db).get(delivery_id)).model_dump())
 
 
-@router.put("/supplier-deliveries/{delivery_id}", name="update_supplier_delivery")
+@router.put(
+    "/supplier-deliveries/{delivery_id}", name="update_supplier_delivery", response_model=ApiResponse[ps.DeliveryOut]
+)
 def update_delivery(
     delivery_id: int,
     payload: ps.DeliveryUpdate,
@@ -205,12 +241,20 @@ def delete_delivery(delivery_id: int, user: User = Depends(_RCV_MANAGE), db: Ses
     return ok(None)
 
 
-@router.post("/supplier-deliveries/{delivery_id}/submit", name="submit_supplier_delivery")
+@router.post(
+    "/supplier-deliveries/{delivery_id}/submit",
+    name="submit_supplier_delivery",
+    response_model=ApiResponse[ps.DeliveryOut],
+)
 def submit_delivery(delivery_id: int, user: User = Depends(_RCV_SUBMIT), db: Session = Depends(get_db)):
     return ok(ps.DeliveryOut.model_validate(SupplierDeliveryService(db).submit(delivery_id)).model_dump())
 
 
-@router.post("/supplier-deliveries/{delivery_id}/accept", name="accept_supplier_delivery")
+@router.post(
+    "/supplier-deliveries/{delivery_id}/accept",
+    name="accept_supplier_delivery",
+    response_model=ApiResponse[ivs.InboundOrderOut],
+)
 def accept_delivery(
     delivery_id: int,
     payload: ivs.DeliveryAcceptIn,
@@ -221,7 +265,11 @@ def accept_delivery(
     return ok(ivs.InboundOrderOut.model_validate(inbound).model_dump())
 
 
-@router.post("/supplier-deliveries/{delivery_id}/cancel", name="cancel_supplier_delivery")
+@router.post(
+    "/supplier-deliveries/{delivery_id}/cancel",
+    name="cancel_supplier_delivery",
+    response_model=ApiResponse[ps.DeliveryOut],
+)
 def cancel_delivery(
     delivery_id: int,
     payload: ps.CancelIn | None = None,

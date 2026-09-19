@@ -230,3 +230,15 @@
 - **回滚**：`git revert <本次提交>`（前端页面 + 权限字段，无迁移/数据副作用）。
 - **备注**：主数据列表首版为「拉取前 200 条 + 前端内存筛选/分页」；数据量增大时需给后端 list 加筛选参数。本会话范围仅主数据，采购/库存前端留后续切片。
 
+## 2026-09-19 · 采购/库存前端 + 接口类型化 + 部署更新（M8 子切片 2）
+
+- **改动**：
+  - 后端：给 `backend/app/api/v1/purchase.py`、`inventory.py`、`inventory_ops.py`、`ledger.py` 的 GET/POST/PUT 端点补 `response_model=ApiResponse[T]`/`PageOut[T]`（`delete` 等 `ok(None)` 端点除外）；重跑导出 OpenAPI 与 `npm run gen:api`。
+  - 前端：新增通用单据组件 `src/components/DocumentView.vue` + `document.ts`（列表/筛选/详情/动作；动作按权限码隐藏，`silent` 供打开弹窗类动作）；新增 `src/api/purchase.ts`、`src/api/inventory.ts`、`src/composables/useMasterOptions.ts`、`src/utils/format.ts`、`src/utils/status.ts`。
+  - 页面：请购单（新建/提交/审批/转采购订单/作废/删除）、采购订单（新建/确认/作废/删除）、到货验收单（新建/提交/验收入库/拒收作废/删除）、库存查询（结存/批次/流水 + 一键对账）、入库单（过账/完成/红冲/作废）、出库单（新建/过账/完成/红冲/作废/删除）、调拨单、盘点单（开始/录入实盘/完成/红冲/作废/删除）、库存预警（扫描/确认/解决/忽略）；`MainLayout.vue` 与 `router/index.ts` 增「采购管理」「库存管理」菜单与路由。
+- **原因**：用户要求补齐剩余前端业务页面并更新部署；原接口无 `response_model` 时 OpenAPI 不产出可用类型（AGENTS 禁止手写重复类型）。
+- **依赖**：**未引入新依赖**。
+- **验证**：`make verify` 绿且 0 skip（后端 66 passed、前端 lint、ml 61 passed、迁移链可解析、不变量）；`npm run typecheck`/`npm run build` 通过。`make up` 重建 api/web 镜像（`erp-postgres` 未重建），`deploy/smoke.sh` 通过，`server-health.sh` 前后一致，详见 `/root/dsh/CHANGELOG-ops.md`。
+- **回滚**：`git revert <本次提交>`；部署回滚 `make down` 或 `git checkout <上一提交> && make up --build`。
+- **备注**：下拉主数据上限 200 条；到货验收库位为可选数字输入；采购/库存接口后续变更需重跑 `gen:api`。
+

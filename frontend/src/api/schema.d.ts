@@ -1612,6 +1612,19 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[DeliveryOut] */
+        ApiResponse_DeliveryOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["DeliveryOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[DemandSeriesMetaOut] */
         ApiResponse_DemandSeriesMetaOut_: {
             /** Code */
@@ -1645,6 +1658,19 @@ export interface components {
             /** Message */
             message: string;
             data?: components["schemas"]["GenerateResult"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[InboundOrderOut] */
+        ApiResponse_InboundOrderOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["InboundOrderOut"] | null;
             /**
              * Trace Id
              * @default
@@ -1716,6 +1742,19 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[MaterialSupplierPriceOut] */
+        ApiResponse_MaterialSupplierPriceOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["MaterialSupplierPriceOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[ModelRegistryOut] */
         ApiResponse_ModelRegistryOut_: {
             /** Code */
@@ -1723,6 +1762,58 @@ export interface components {
             /** Message */
             message: string;
             data?: components["schemas"]["ModelRegistryOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[OutboundOrderOut] */
+        ApiResponse_OutboundOrderOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["OutboundOrderOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[POOut] */
+        ApiResponse_POOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["POOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PROut] */
+        ApiResponse_PROut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PROut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[DeliveryOut]] */
+        ApiResponse_PageOut_DeliveryOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_DeliveryOut_"] | null;
             /**
              * Trace Id
              * @default
@@ -1768,6 +1859,71 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[PageOut[InboundOrderOut]] */
+        ApiResponse_PageOut_InboundOrderOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_InboundOrderOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[InventoryBatchOut]] */
+        ApiResponse_PageOut_InventoryBatchOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_InventoryBatchOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[InventoryOut]] */
+        ApiResponse_PageOut_InventoryOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_InventoryOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[InventorySnapshotOut]] */
+        ApiResponse_PageOut_InventorySnapshotOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_InventorySnapshotOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[InventoryTransactionOut]] */
+        ApiResponse_PageOut_InventoryTransactionOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_InventoryTransactionOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[PageOut[LocationOut]] */
         ApiResponse_PageOut_LocationOut__: {
             /** Code */
@@ -1807,6 +1963,19 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[PageOut[MaterialSupplierPriceOut]] */
+        ApiResponse_PageOut_MaterialSupplierPriceOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_MaterialSupplierPriceOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[PageOut[ModelRegistryOut]] */
         ApiResponse_PageOut_ModelRegistryOut__: {
             /** Code */
@@ -1814,6 +1983,45 @@ export interface components {
             /** Message */
             message: string;
             data?: components["schemas"]["PageOut_ModelRegistryOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[OutboundOrderOut]] */
+        ApiResponse_PageOut_OutboundOrderOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_OutboundOrderOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[POOut]] */
+        ApiResponse_PageOut_POOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_POOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[PROut]] */
+        ApiResponse_PageOut_PROut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_PROut_"] | null;
             /**
              * Trace Id
              * @default
@@ -1846,6 +2054,32 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[PageOut[StockAlertOut]] */
+        ApiResponse_PageOut_StockAlertOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_StockAlertOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[StocktakeOrderOut]] */
+        ApiResponse_PageOut_StocktakeOrderOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_StocktakeOrderOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[PageOut[SupplierOut]] */
         ApiResponse_PageOut_SupplierOut__: {
             /** Code */
@@ -1853,6 +2087,19 @@ export interface components {
             /** Message */
             message: string;
             data?: components["schemas"]["PageOut_SupplierOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[TransferOrderOut]] */
+        ApiResponse_PageOut_TransferOrderOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_TransferOrderOut_"] | null;
             /**
              * Trace Id
              * @default
@@ -1885,6 +2132,19 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[ReconcileOut] */
+        ApiResponse_ReconcileOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["ReconcileOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[ReplenishmentPolicyOut] */
         ApiResponse_ReplenishmentPolicyOut_: {
             /** Code */
@@ -1911,6 +2171,58 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[ScanResult] */
+        ApiResponse_ScanResult_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["ScanResult"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[SnapshotResult] */
+        ApiResponse_SnapshotResult_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["SnapshotResult"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[StockAlertOut] */
+        ApiResponse_StockAlertOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["StockAlertOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[StocktakeOrderOut] */
+        ApiResponse_StocktakeOrderOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["StocktakeOrderOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[SupplierOut] */
         ApiResponse_SupplierOut_: {
             /** Code */
@@ -1918,6 +2230,19 @@ export interface components {
             /** Message */
             message: string;
             data?: components["schemas"]["SupplierOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[TransferOrderOut] */
+        ApiResponse_TransferOrderOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["TransferOrderOut"] | null;
             /**
              * Trace Id
              * @default
@@ -2086,6 +2411,83 @@ export interface components {
             inspection_result?: string | null;
             /** Remark */
             remark?: string | null;
+        };
+        /** DeliveryItemOut */
+        DeliveryItemOut: {
+            /** Id */
+            id: number;
+            /** Delivery Id */
+            delivery_id: number;
+            /** Line No */
+            line_no: number;
+            /** Po Item Id */
+            po_item_id: number;
+            /** Material Id */
+            material_id: number;
+            /** Material Code */
+            material_code: string;
+            /** Material Name */
+            material_name: string;
+            /** Spec */
+            spec: string | null;
+            /** Unit Name */
+            unit_name: string;
+            /** Quantity */
+            quantity: string;
+            /** Accepted Qty */
+            accepted_qty: string | null;
+            /** Rejected Qty */
+            rejected_qty: string | null;
+            /** Batch No */
+            batch_no: string | null;
+            /** Production Date */
+            production_date: string | null;
+            /** Expiry Date */
+            expiry_date: string | null;
+            /** Inspection Result */
+            inspection_result: string | null;
+            /** Remark */
+            remark: string | null;
+        };
+        /** DeliveryOut */
+        DeliveryOut: {
+            /** Id */
+            id: number;
+            /** Doc No */
+            doc_no: string;
+            /** Po Id */
+            po_id: number;
+            /** Supplier Id */
+            supplier_id: number;
+            /**
+             * Delivery Date
+             * Format: date
+             */
+            delivery_date: string;
+            /** Status */
+            status: string;
+            /** Received By */
+            received_by: number | null;
+            /** Inspected By */
+            inspected_by: number | null;
+            /** Inspected At */
+            inspected_at: string | null;
+            /** Total Amount */
+            total_amount: string;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /** Remark */
+            remark: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["DeliveryItemOut"][];
         };
         /** DeliveryUpdate */
         DeliveryUpdate: {
@@ -2322,6 +2724,82 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** InboundItemOut */
+        InboundItemOut: {
+            /** Id */
+            id: number;
+            /** Inbound Id */
+            inbound_id: number;
+            /** Line No */
+            line_no: number;
+            /** Material Id */
+            material_id: number;
+            /** Material Code */
+            material_code: string;
+            /** Material Name */
+            material_name: string;
+            /** Spec */
+            spec: string | null;
+            /** Unit Name */
+            unit_name: string;
+            /** Quantity */
+            quantity: string;
+            /** Unit Price */
+            unit_price: string;
+            /** Amount */
+            amount: string;
+            /** Batch Id */
+            batch_id: number | null;
+            /** Batch No */
+            batch_no: string | null;
+            /** Production Date */
+            production_date: string | null;
+            /** Expiry Date */
+            expiry_date: string | null;
+            /** Location Id */
+            location_id: number | null;
+            /** Po Item Id */
+            po_item_id: number | null;
+            /** Remark */
+            remark: string | null;
+        };
+        /** InboundOrderOut */
+        InboundOrderOut: {
+            /** Id */
+            id: number;
+            /** Doc No */
+            doc_no: string;
+            /** Source Type */
+            source_type: string;
+            /** Source Id */
+            source_id: number | null;
+            /** Delivery Id */
+            delivery_id: number | null;
+            /** Warehouse Id */
+            warehouse_id: number;
+            /** Status */
+            status: string;
+            /** Inbound By */
+            inbound_by: number | null;
+            /** Inbound At */
+            inbound_at: string | null;
+            /** Total Amount */
+            total_amount: string;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /** Remark */
+            remark: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["InboundItemOut"][];
+        };
         /** IngestResult */
         IngestResult: {
             /** Inserted */
@@ -2330,6 +2808,117 @@ export interface components {
             updated: number;
             /** Series Count */
             series_count: number;
+        };
+        /** InventoryBatchOut */
+        InventoryBatchOut: {
+            /** Id */
+            id: number;
+            /** Material Id */
+            material_id: number;
+            /** Warehouse Id */
+            warehouse_id: number;
+            /** Batch No */
+            batch_no: string;
+            /** Is Default */
+            is_default: boolean;
+            /** Production Date */
+            production_date: string | null;
+            /** Expiry Date */
+            expiry_date: string | null;
+            /** Inbound Date */
+            inbound_date: string | null;
+            /** Quantity */
+            quantity: string;
+            /** Locked Qty */
+            locked_qty: string;
+            /** Status */
+            status: string;
+            /** Remark */
+            remark: string | null;
+        };
+        /** InventoryOut */
+        InventoryOut: {
+            /** Id */
+            id: number;
+            /** Material Id */
+            material_id: number;
+            /** Warehouse Id */
+            warehouse_id: number;
+            /** Quantity */
+            quantity: string;
+            /** Locked Qty */
+            locked_qty: string;
+            /** Version */
+            version: number;
+            /** Last Txn At */
+            last_txn_at: string | null;
+            /** Remark */
+            remark: string | null;
+        };
+        /** InventorySnapshotOut */
+        InventorySnapshotOut: {
+            /** Id */
+            id: number;
+            /**
+             * Snapshot Date
+             * Format: date
+             */
+            snapshot_date: string;
+            /** Material Id */
+            material_id: number;
+            /** Warehouse Id */
+            warehouse_id: number;
+            /** Quantity */
+            quantity: string;
+            /** Locked Qty */
+            locked_qty: string;
+            /** In Transit Qty */
+            in_transit_qty: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** InventoryTransactionOut */
+        InventoryTransactionOut: {
+            /** Id */
+            id: number;
+            /** Idem Key */
+            idem_key: string | null;
+            /** Material Id */
+            material_id: number;
+            /** Warehouse Id */
+            warehouse_id: number;
+            /** Batch Id */
+            batch_id: number;
+            /** Quantity */
+            quantity: string;
+            /** Txn Type */
+            txn_type: string;
+            /** Source Type */
+            source_type: string;
+            /** Source Id */
+            source_id: number | null;
+            /** Source No */
+            source_no: string | null;
+            /** Source Line Id */
+            source_line_id: number | null;
+            /** Balance After */
+            balance_after: string | null;
+            /** Unit Price */
+            unit_price: string | null;
+            /** Amount */
+            amount: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Created By */
+            created_by: number | null;
+            /** Remark */
+            remark: string | null;
         };
         /** LocationCreate */
         LocationCreate: {
@@ -2569,6 +3158,33 @@ export interface components {
             /** Remark */
             remark?: string | null;
         };
+        /** MaterialSupplierPriceOut */
+        MaterialSupplierPriceOut: {
+            /** Id */
+            id: number;
+            /** Material Id */
+            material_id: number;
+            /** Supplier Id */
+            supplier_id: number;
+            /** Unit Price */
+            unit_price: string;
+            /** Currency */
+            currency: string;
+            /** Min Order Qty */
+            min_order_qty: string | null;
+            /** Lead Time Days */
+            lead_time_days: string | null;
+            /** Is Preferred */
+            is_preferred: boolean;
+            /** Valid From */
+            valid_from: string | null;
+            /** Valid To */
+            valid_to: string | null;
+            /** Status */
+            status: string;
+            /** Remark */
+            remark: string | null;
+        };
         /** MaterialSupplierPriceUpdate */
         MaterialSupplierPriceUpdate: {
             /** Unit Price */
@@ -2735,6 +3351,78 @@ export interface components {
             /** Remark */
             remark?: string | null;
         };
+        /** OutboundItemOut */
+        OutboundItemOut: {
+            /** Id */
+            id: number;
+            /** Outbound Id */
+            outbound_id: number;
+            /** Line No */
+            line_no: number;
+            /** Material Id */
+            material_id: number;
+            /** Material Code */
+            material_code: string;
+            /** Material Name */
+            material_name: string;
+            /** Spec */
+            spec: string | null;
+            /** Unit Name */
+            unit_name: string;
+            /** Quantity */
+            quantity: string;
+            /** Batch Id */
+            batch_id: number | null;
+            /** Location Id */
+            location_id: number | null;
+            /** Unit Price */
+            unit_price: string;
+            /** Amount */
+            amount: string;
+            /** Remark */
+            remark: string | null;
+        };
+        /** OutboundOrderOut */
+        OutboundOrderOut: {
+            /** Id */
+            id: number;
+            /** Doc No */
+            doc_no: string;
+            /** Source Type */
+            source_type: string;
+            /** Source Id */
+            source_id: number | null;
+            /** Transfer Order Id */
+            transfer_order_id: number | null;
+            /** Warehouse Id */
+            warehouse_id: number;
+            /** Receiver Id */
+            receiver_id: number | null;
+            /** Dept Name */
+            dept_name: string | null;
+            /** Status */
+            status: string;
+            /** Outbound By */
+            outbound_by: number | null;
+            /** Outbound At */
+            outbound_at: string | null;
+            /** Total Amount */
+            total_amount: string;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /** Remark */
+            remark: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["OutboundItemOut"][];
+        };
         /** OutboundUpdate */
         OutboundUpdate: {
             /** Receiver Id */
@@ -2794,6 +3482,95 @@ export interface components {
             source_pr_item_id?: number | null;
             /** Remark */
             remark?: string | null;
+        };
+        /** POItemOut */
+        POItemOut: {
+            /** Id */
+            id: number;
+            /** Po Id */
+            po_id: number;
+            /** Line No */
+            line_no: number;
+            /** Material Id */
+            material_id: number;
+            /** Material Code */
+            material_code: string;
+            /** Material Name */
+            material_name: string;
+            /** Spec */
+            spec: string | null;
+            /** Unit Name */
+            unit_name: string;
+            /** Quantity */
+            quantity: string;
+            /** Unit Price */
+            unit_price: string;
+            /** Tax Rate */
+            tax_rate: string;
+            /** Amount */
+            amount: string;
+            /** Received Qty */
+            received_qty: string;
+            /** Expected Date */
+            expected_date: string | null;
+            /** Source Pr Item Id */
+            source_pr_item_id: number | null;
+            /** Remark */
+            remark: string | null;
+        };
+        /** POOut */
+        POOut: {
+            /** Id */
+            id: number;
+            /** Doc No */
+            doc_no: string;
+            /** Requisition Id */
+            requisition_id: number | null;
+            /** Supplier Id */
+            supplier_id: number;
+            /** Status */
+            status: string;
+            /**
+             * Order Date
+             * Format: date
+             */
+            order_date: string;
+            /** Expected Date */
+            expected_date: string | null;
+            /** Buyer Id */
+            buyer_id: number | null;
+            /** Delivery Address */
+            delivery_address: string | null;
+            /** Currency */
+            currency: string;
+            /** Total Amount */
+            total_amount: string;
+            /** Tax Amount */
+            tax_amount: string;
+            /** Payment Terms */
+            payment_terms: string | null;
+            /** Approved By */
+            approved_by: number | null;
+            /** Approved At */
+            approved_at: string | null;
+            /** Cancelled By */
+            cancelled_by: number | null;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /** Remark */
+            remark: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["POItemOut"][];
         };
         /** POUpdate */
         POUpdate: {
@@ -2977,6 +3754,13 @@ export interface components {
             /** Items */
             items?: components["schemas"]["PRItemIn"][] | null;
         };
+        /** PageOut[DeliveryOut] */
+        PageOut_DeliveryOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["DeliveryOut"][];
+        };
         /** PageOut[DemandSeriesMetaOut] */
         PageOut_DemandSeriesMetaOut_: {
             /** Total */
@@ -2997,6 +3781,41 @@ export interface components {
             total: number;
             /** Items */
             items: components["schemas"]["ForecastRunOut"][];
+        };
+        /** PageOut[InboundOrderOut] */
+        PageOut_InboundOrderOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["InboundOrderOut"][];
+        };
+        /** PageOut[InventoryBatchOut] */
+        PageOut_InventoryBatchOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["InventoryBatchOut"][];
+        };
+        /** PageOut[InventoryOut] */
+        PageOut_InventoryOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["InventoryOut"][];
+        };
+        /** PageOut[InventorySnapshotOut] */
+        PageOut_InventorySnapshotOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["InventorySnapshotOut"][];
+        };
+        /** PageOut[InventoryTransactionOut] */
+        PageOut_InventoryTransactionOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["InventoryTransactionOut"][];
         };
         /** PageOut[LocationOut] */
         PageOut_LocationOut_: {
@@ -3019,12 +3838,40 @@ export interface components {
             /** Items */
             items: components["schemas"]["MaterialOut"][];
         };
+        /** PageOut[MaterialSupplierPriceOut] */
+        PageOut_MaterialSupplierPriceOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["MaterialSupplierPriceOut"][];
+        };
         /** PageOut[ModelRegistryOut] */
         PageOut_ModelRegistryOut_: {
             /** Total */
             total: number;
             /** Items */
             items: components["schemas"]["ModelRegistryOut"][];
+        };
+        /** PageOut[OutboundOrderOut] */
+        PageOut_OutboundOrderOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["OutboundOrderOut"][];
+        };
+        /** PageOut[POOut] */
+        PageOut_POOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["POOut"][];
+        };
+        /** PageOut[PROut] */
+        PageOut_PROut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["PROut"][];
         };
         /** PageOut[ReplenishmentPolicyOut] */
         PageOut_ReplenishmentPolicyOut_: {
@@ -3040,12 +3887,33 @@ export interface components {
             /** Items */
             items: components["schemas"]["ReplenishmentSuggestionOut"][];
         };
+        /** PageOut[StockAlertOut] */
+        PageOut_StockAlertOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["StockAlertOut"][];
+        };
+        /** PageOut[StocktakeOrderOut] */
+        PageOut_StocktakeOrderOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["StocktakeOrderOut"][];
+        };
         /** PageOut[SupplierOut] */
         PageOut_SupplierOut_: {
             /** Total */
             total: number;
             /** Items */
             items: components["schemas"]["SupplierOut"][];
+        };
+        /** PageOut[TransferOrderOut] */
+        PageOut_TransferOrderOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["TransferOrderOut"][];
         };
         /** PageOut[UnitOut] */
         PageOut_UnitOut_: {
@@ -3060,6 +3928,27 @@ export interface components {
             total: number;
             /** Items */
             items: components["schemas"]["WarehouseOut"][];
+        };
+        /** ReconcileOut */
+        ReconcileOut: {
+            /** Inventory Vs Batch */
+            inventory_vs_batch: {
+                [key: string]: unknown;
+            }[];
+            /** Inventory Vs Txn */
+            inventory_vs_txn: {
+                [key: string]: unknown;
+            }[];
+            /** Batch Vs Txn */
+            batch_vs_txn: {
+                [key: string]: unknown;
+            }[];
+            /** Negative Or Locked */
+            negative_or_locked: {
+                [key: string]: unknown;
+            }[];
+            /** Ok */
+            ok: boolean;
         };
         /** ReplenishmentPolicyCreate */
         ReplenishmentPolicyCreate: {
@@ -3267,6 +4156,61 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** ScanResult */
+        ScanResult: {
+            /** Scanned */
+            scanned: number;
+            /** Created */
+            created: number;
+        };
+        /** SnapshotResult */
+        SnapshotResult: {
+            /**
+             * Snapshot Date
+             * Format: date
+             */
+            snapshot_date: string;
+            /** Created */
+            created: number;
+            /** Updated */
+            updated: number;
+        };
+        /** StockAlertOut */
+        StockAlertOut: {
+            /** Id */
+            id: number;
+            /** Material Id */
+            material_id: number;
+            /** Warehouse Id */
+            warehouse_id: number | null;
+            /** Batch Id */
+            batch_id: number | null;
+            /** Alert Type */
+            alert_type: string;
+            /** Level */
+            level: string;
+            /** Status */
+            status: string;
+            /** Threshold */
+            threshold: string | null;
+            /** Current Value */
+            current_value: string | null;
+            /** Message */
+            message: string | null;
+            /**
+             * Triggered At
+             * Format: date-time
+             */
+            triggered_at: string;
+            /** Acked By */
+            acked_by: number | null;
+            /** Acked At */
+            acked_at: string | null;
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Remark */
+            remark: string | null;
+        };
         /** StocktakeCountIn */
         StocktakeCountIn: {
             /** Items */
@@ -3314,6 +4258,68 @@ export interface components {
             reason?: string | null;
             /** Remark */
             remark?: string | null;
+        };
+        /** StocktakeItemOut */
+        StocktakeItemOut: {
+            /** Id */
+            id: number;
+            /** Stocktake Id */
+            stocktake_id: number;
+            /** Line No */
+            line_no: number;
+            /** Material Id */
+            material_id: number;
+            /** Batch Id */
+            batch_id: number | null;
+            /** Location Id */
+            location_id: number | null;
+            /** Book Qty */
+            book_qty: string;
+            /** Actual Qty */
+            actual_qty: string | null;
+            /** Diff Qty */
+            diff_qty: string | null;
+            /** Reason */
+            reason: string | null;
+            /** Remark */
+            remark: string | null;
+        };
+        /** StocktakeOrderOut */
+        StocktakeOrderOut: {
+            /** Id */
+            id: number;
+            /** Doc No */
+            doc_no: string;
+            /** Warehouse Id */
+            warehouse_id: number;
+            /** Scope */
+            scope: string;
+            /** Status */
+            status: string;
+            /** Planned Date */
+            planned_date: string | null;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Posted By */
+            posted_by: number | null;
+            /** Posted At */
+            posted_at: string | null;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /** Remark */
+            remark: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["StocktakeItemOut"][];
         };
         /** StocktakeUpdate */
         StocktakeUpdate: {
@@ -3457,6 +4463,75 @@ export interface components {
             to_location_id?: number | null;
             /** Remark */
             remark?: string | null;
+        };
+        /** TransferItemOut */
+        TransferItemOut: {
+            /** Id */
+            id: number;
+            /** Transfer Id */
+            transfer_id: number;
+            /** Line No */
+            line_no: number;
+            /** Material Id */
+            material_id: number;
+            /** Material Code */
+            material_code: string;
+            /** Material Name */
+            material_name: string;
+            /** Spec */
+            spec: string | null;
+            /** Unit Name */
+            unit_name: string;
+            /** Quantity */
+            quantity: string;
+            /** Batch Id */
+            batch_id: number | null;
+            /** From Location Id */
+            from_location_id: number | null;
+            /** To Location Id */
+            to_location_id: number | null;
+            /** Outbound Item Id */
+            outbound_item_id: number | null;
+            /** Inbound Item Id */
+            inbound_item_id: number | null;
+            /** Remark */
+            remark: string | null;
+        };
+        /** TransferOrderOut */
+        TransferOrderOut: {
+            /** Id */
+            id: number;
+            /** Doc No */
+            doc_no: string;
+            /** From Warehouse Id */
+            from_warehouse_id: number;
+            /** To Warehouse Id */
+            to_warehouse_id: number;
+            /** Status */
+            status: string;
+            /** Applicant Id */
+            applicant_id: number | null;
+            /**
+             * Transfer Date
+             * Format: date
+             */
+            transfer_date: string;
+            /** Completed At */
+            completed_at: string | null;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /** Remark */
+            remark: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["TransferItemOut"][];
         };
         /** TransferUpdate */
         TransferUpdate: {
@@ -4893,7 +5968,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_PROut__"];
                 };
             };
             /** @description Validation Error */
@@ -4926,7 +6001,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PROut_"];
                 };
             };
             /** @description Validation Error */
@@ -4957,7 +6032,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PROut_"];
                 };
             };
             /** @description Validation Error */
@@ -4992,7 +6067,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PROut_"];
                 };
             };
             /** @description Validation Error */
@@ -5054,7 +6129,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PROut_"];
                 };
             };
             /** @description Validation Error */
@@ -5085,7 +6160,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PROut_"];
                 };
             };
             /** @description Validation Error */
@@ -5120,7 +6195,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PROut_"];
                 };
             };
             /** @description Validation Error */
@@ -5155,7 +6230,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_POOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5188,7 +6263,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_POOut__"];
                 };
             };
             /** @description Validation Error */
@@ -5221,7 +6296,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_POOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5252,7 +6327,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_POOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5287,7 +6362,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_POOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5349,7 +6424,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_POOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5384,7 +6459,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_POOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5417,7 +6492,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_DeliveryOut__"];
                 };
             };
             /** @description Validation Error */
@@ -5450,7 +6525,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_DeliveryOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5481,7 +6556,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_DeliveryOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5516,7 +6591,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_DeliveryOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5578,7 +6653,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_DeliveryOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5613,7 +6688,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_InboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5648,7 +6723,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_DeliveryOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5682,7 +6757,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_InventoryOut__"];
                 };
             };
             /** @description Validation Error */
@@ -5716,7 +6791,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_InventoryBatchOut__"];
                 };
             };
             /** @description Validation Error */
@@ -5751,7 +6826,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_InventoryTransactionOut__"];
                 };
             };
             /** @description Validation Error */
@@ -5780,7 +6855,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_ReconcileOut_"];
                 };
             };
         };
@@ -5804,7 +6879,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_InboundOrderOut__"];
                 };
             };
             /** @description Validation Error */
@@ -5835,7 +6910,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_InboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5866,7 +6941,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_InboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5897,7 +6972,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_InboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5934,7 +7009,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_InboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5971,7 +7046,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_InboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6004,7 +7079,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_OutboundOrderOut__"];
                 };
             };
             /** @description Validation Error */
@@ -6037,7 +7112,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_OutboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6068,7 +7143,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_OutboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6103,7 +7178,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_OutboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6165,7 +7240,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_OutboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6196,7 +7271,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_OutboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6231,7 +7306,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_OutboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6266,7 +7341,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_OutboundOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6299,7 +7374,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_TransferOrderOut__"];
                 };
             };
             /** @description Validation Error */
@@ -6332,7 +7407,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_TransferOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6363,7 +7438,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_TransferOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6398,7 +7473,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_TransferOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6460,7 +7535,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_TransferOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6491,7 +7566,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_TransferOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6526,7 +7601,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_TransferOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6561,7 +7636,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_TransferOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6594,7 +7669,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_StocktakeOrderOut__"];
                 };
             };
             /** @description Validation Error */
@@ -6627,7 +7702,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StocktakeOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6658,7 +7733,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StocktakeOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6693,7 +7768,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StocktakeOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6755,7 +7830,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StocktakeOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6790,7 +7865,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StocktakeOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6821,7 +7896,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StocktakeOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6856,7 +7931,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StocktakeOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6891,7 +7966,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StocktakeOrderOut_"];
                 };
             };
             /** @description Validation Error */
@@ -6926,7 +8001,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_StockAlertOut__"];
                 };
             };
             /** @description Validation Error */
@@ -6955,7 +8030,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_ScanResult_"];
                 };
             };
         };
@@ -6977,7 +8052,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StockAlertOut_"];
                 };
             };
             /** @description Validation Error */
@@ -7008,7 +8083,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StockAlertOut_"];
                 };
             };
             /** @description Validation Error */
@@ -7039,7 +8114,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StockAlertOut_"];
                 };
             };
             /** @description Validation Error */
@@ -7074,7 +8149,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_StockAlertOut_"];
                 };
             };
             /** @description Validation Error */
@@ -7108,7 +8183,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_InventorySnapshotOut__"];
                 };
             };
             /** @description Validation Error */
@@ -7139,7 +8214,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_SnapshotResult_"];
                 };
             };
             /** @description Validation Error */
@@ -7173,7 +8248,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_PageOut_MaterialSupplierPriceOut__"];
                 };
             };
             /** @description Validation Error */
@@ -7206,7 +8281,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_MaterialSupplierPriceOut_"];
                 };
             };
             /** @description Validation Error */
@@ -7237,7 +8312,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_MaterialSupplierPriceOut_"];
                 };
             };
             /** @description Validation Error */
@@ -7272,7 +8347,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ApiResponse_MaterialSupplierPriceOut_"];
                 };
             };
             /** @description Validation Error */

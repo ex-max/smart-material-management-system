@@ -9,6 +9,7 @@ from app.core.state_machine import Actions, DocTypes, get_transition
 from app.model.user import User
 from app.schema import inventory_ops as ops
 from app.schema import purchase as ps
+from app.schema.common import ApiResponse, PageOut
 from app.service.inventory_ops import OutboundService, StocktakeService, TransferService
 
 router = APIRouter(tags=["库存作业"])
@@ -29,7 +30,7 @@ _ST_CANCEL = require_perm(get_transition(DocTypes.STOCKTAKE_ORDER, Actions.CANCE
 
 
 # ---------------- 出库单 ----------------
-@router.get("/outbound-orders", name="list_outbound_orders")
+@router.get("/outbound-orders", name="list_outbound_orders", response_model=ApiResponse[PageOut[ops.OutboundOrderOut]])
 def list_outbound_orders(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -41,19 +42,25 @@ def list_outbound_orders(
     return ok({"total": total, "items": [ops.OutboundOrderOut.model_validate(x).model_dump() for x in items]})
 
 
-@router.post("/outbound-orders", status_code=201, name="create_outbound_order")
+@router.post(
+    "/outbound-orders", status_code=201, name="create_outbound_order", response_model=ApiResponse[ops.OutboundOrderOut]
+)
 def create_outbound_order(
     payload: ops.OutboundCreate, user: User = Depends(_ST_CREATE), db: Session = Depends(get_db)
 ):
     return ok(ops.OutboundOrderOut.model_validate(OutboundService(db).create(payload, user.id)).model_dump())
 
 
-@router.get("/outbound-orders/{outbound_id}", name="get_outbound_order")
+@router.get(
+    "/outbound-orders/{outbound_id}", name="get_outbound_order", response_model=ApiResponse[ops.OutboundOrderOut]
+)
 def get_outbound_order(outbound_id: int, user: User = Depends(_VIEW), db: Session = Depends(get_db)):
     return ok(ops.OutboundOrderOut.model_validate(OutboundService(db).get(outbound_id)).model_dump())
 
 
-@router.put("/outbound-orders/{outbound_id}", name="update_outbound_order")
+@router.put(
+    "/outbound-orders/{outbound_id}", name="update_outbound_order", response_model=ApiResponse[ops.OutboundOrderOut]
+)
 def update_outbound_order(
     outbound_id: int,
     payload: ops.OutboundUpdate,
@@ -69,17 +76,25 @@ def delete_outbound_order(outbound_id: int, user: User = Depends(_ST_CREATE), db
     return ok(None)
 
 
-@router.post("/outbound-orders/{outbound_id}/post", name="post_outbound_order")
+@router.post(
+    "/outbound-orders/{outbound_id}/post", name="post_outbound_order", response_model=ApiResponse[ops.OutboundOrderOut]
+)
 def post_outbound_order(outbound_id: int, user: User = Depends(_OUT_POST), db: Session = Depends(get_db)):
     return ok(ops.OutboundOrderOut.model_validate(OutboundService(db).post(outbound_id, user.id)).model_dump())
 
 
-@router.post("/outbound-orders/{outbound_id}/complete", name="complete_outbound_order")
+@router.post(
+    "/outbound-orders/{outbound_id}/complete",
+    name="complete_outbound_order",
+    response_model=ApiResponse[ops.OutboundOrderOut],
+)
 def complete_outbound_order(outbound_id: int, user: User = Depends(_OUT_COMPLETE), db: Session = Depends(get_db)):
     return ok(ops.OutboundOrderOut.model_validate(OutboundService(db).complete(outbound_id)).model_dump())
 
 
-@router.post("/outbound-orders/{outbound_id}/cancel", name="cancel_outbound_order")
+@router.post(
+    "/outbound-orders/{outbound_id}/cancel", name="cancel_outbound_order", response_model=ApiResponse[ops.OutboundOrderOut]
+)
 def cancel_outbound_order(
     outbound_id: int,
     payload: ps.CancelIn | None = None,
@@ -90,7 +105,9 @@ def cancel_outbound_order(
     return ok(ops.OutboundOrderOut.model_validate(OutboundService(db).cancel(outbound_id, reason)).model_dump())
 
 
-@router.post("/outbound-orders/{outbound_id}/reverse", name="reverse_outbound_order")
+@router.post(
+    "/outbound-orders/{outbound_id}/reverse", name="reverse_outbound_order", response_model=ApiResponse[ops.OutboundOrderOut]
+)
 def reverse_outbound_order(
     outbound_id: int,
     payload: ps.CancelIn | None = None,
@@ -103,7 +120,7 @@ def reverse_outbound_order(
 
 
 # ---------------- 调拨单 ----------------
-@router.get("/transfer-orders", name="list_transfer_orders")
+@router.get("/transfer-orders", name="list_transfer_orders", response_model=ApiResponse[PageOut[ops.TransferOrderOut]])
 def list_transfer_orders(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -115,17 +132,23 @@ def list_transfer_orders(
     return ok({"total": total, "items": [ops.TransferOrderOut.model_validate(x).model_dump() for x in items]})
 
 
-@router.post("/transfer-orders", status_code=201, name="create_transfer_order")
+@router.post(
+    "/transfer-orders", status_code=201, name="create_transfer_order", response_model=ApiResponse[ops.TransferOrderOut]
+)
 def create_transfer_order(payload: ops.TransferCreate, user: User = Depends(_ST_CREATE), db: Session = Depends(get_db)):
     return ok(ops.TransferOrderOut.model_validate(TransferService(db).create(payload, user.id)).model_dump())
 
 
-@router.get("/transfer-orders/{transfer_id}", name="get_transfer_order")
+@router.get(
+    "/transfer-orders/{transfer_id}", name="get_transfer_order", response_model=ApiResponse[ops.TransferOrderOut]
+)
 def get_transfer_order(transfer_id: int, user: User = Depends(_VIEW), db: Session = Depends(get_db)):
     return ok(ops.TransferOrderOut.model_validate(TransferService(db).get(transfer_id)).model_dump())
 
 
-@router.put("/transfer-orders/{transfer_id}", name="update_transfer_order")
+@router.put(
+    "/transfer-orders/{transfer_id}", name="update_transfer_order", response_model=ApiResponse[ops.TransferOrderOut]
+)
 def update_transfer_order(
     transfer_id: int,
     payload: ops.TransferUpdate,
@@ -141,17 +164,25 @@ def delete_transfer_order(transfer_id: int, user: User = Depends(_ST_CREATE), db
     return ok(None)
 
 
-@router.post("/transfer-orders/{transfer_id}/post", name="post_transfer_order")
+@router.post(
+    "/transfer-orders/{transfer_id}/post", name="post_transfer_order", response_model=ApiResponse[ops.TransferOrderOut]
+)
 def post_transfer_order(transfer_id: int, user: User = Depends(_TR_POST), db: Session = Depends(get_db)):
     return ok(ops.TransferOrderOut.model_validate(TransferService(db).post(transfer_id, user.id)).model_dump())
 
 
-@router.post("/transfer-orders/{transfer_id}/complete", name="complete_transfer_order")
+@router.post(
+    "/transfer-orders/{transfer_id}/complete",
+    name="complete_transfer_order",
+    response_model=ApiResponse[ops.TransferOrderOut],
+)
 def complete_transfer_order(transfer_id: int, user: User = Depends(_TR_COMPLETE), db: Session = Depends(get_db)):
     return ok(ops.TransferOrderOut.model_validate(TransferService(db).complete(transfer_id)).model_dump())
 
 
-@router.post("/transfer-orders/{transfer_id}/cancel", name="cancel_transfer_order")
+@router.post(
+    "/transfer-orders/{transfer_id}/cancel", name="cancel_transfer_order", response_model=ApiResponse[ops.TransferOrderOut]
+)
 def cancel_transfer_order(
     transfer_id: int,
     payload: ps.CancelIn | None = None,
@@ -162,7 +193,11 @@ def cancel_transfer_order(
     return ok(ops.TransferOrderOut.model_validate(TransferService(db).cancel(transfer_id, reason)).model_dump())
 
 
-@router.post("/transfer-orders/{transfer_id}/reverse", name="reverse_transfer_order")
+@router.post(
+    "/transfer-orders/{transfer_id}/reverse",
+    name="reverse_transfer_order",
+    response_model=ApiResponse[ops.TransferOrderOut],
+)
 def reverse_transfer_order(
     transfer_id: int,
     payload: ps.CancelIn | None = None,
@@ -174,7 +209,7 @@ def reverse_transfer_order(
 
 
 # ---------------- 盘点单 ----------------
-@router.get("/stocktake-orders", name="list_stocktake_orders")
+@router.get("/stocktake-orders", name="list_stocktake_orders", response_model=ApiResponse[PageOut[ops.StocktakeOrderOut]])
 def list_stocktake_orders(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -186,19 +221,25 @@ def list_stocktake_orders(
     return ok({"total": total, "items": [ops.StocktakeOrderOut.model_validate(x).model_dump() for x in items]})
 
 
-@router.post("/stocktake-orders", status_code=201, name="create_stocktake_order")
+@router.post(
+    "/stocktake-orders", status_code=201, name="create_stocktake_order", response_model=ApiResponse[ops.StocktakeOrderOut]
+)
 def create_stocktake_order(
     payload: ops.StocktakeCreate, user: User = Depends(_ST_CREATE), db: Session = Depends(get_db)
 ):
     return ok(ops.StocktakeOrderOut.model_validate(StocktakeService(db).create(payload, user.id)).model_dump())
 
 
-@router.get("/stocktake-orders/{stocktake_id}", name="get_stocktake_order")
+@router.get(
+    "/stocktake-orders/{stocktake_id}", name="get_stocktake_order", response_model=ApiResponse[ops.StocktakeOrderOut]
+)
 def get_stocktake_order(stocktake_id: int, user: User = Depends(_VIEW), db: Session = Depends(get_db)):
     return ok(ops.StocktakeOrderOut.model_validate(StocktakeService(db).get(stocktake_id)).model_dump())
 
 
-@router.put("/stocktake-orders/{stocktake_id}", name="update_stocktake_order")
+@router.put(
+    "/stocktake-orders/{stocktake_id}", name="update_stocktake_order", response_model=ApiResponse[ops.StocktakeOrderOut]
+)
 def update_stocktake_order(
     stocktake_id: int,
     payload: ops.StocktakeUpdate,
@@ -214,12 +255,16 @@ def delete_stocktake_order(stocktake_id: int, user: User = Depends(_ST_CREATE), 
     return ok(None)
 
 
-@router.post("/stocktake-orders/{stocktake_id}/start", name="start_stocktake_order")
+@router.post(
+    "/stocktake-orders/{stocktake_id}/start", name="start_stocktake_order", response_model=ApiResponse[ops.StocktakeOrderOut]
+)
 def start_stocktake_order(stocktake_id: int, user: User = Depends(_ST_START), db: Session = Depends(get_db)):
     return ok(ops.StocktakeOrderOut.model_validate(StocktakeService(db).start(stocktake_id, user.id)).model_dump())
 
 
-@router.post("/stocktake-orders/{stocktake_id}/counts", name="count_stocktake_order")
+@router.post(
+    "/stocktake-orders/{stocktake_id}/counts", name="count_stocktake_order", response_model=ApiResponse[ops.StocktakeOrderOut]
+)
 def count_stocktake_order(
     stocktake_id: int,
     payload: ops.StocktakeCountIn,
@@ -229,14 +274,20 @@ def count_stocktake_order(
     return ok(ops.StocktakeOrderOut.model_validate(StocktakeService(db).set_counts(stocktake_id, payload)).model_dump())
 
 
-@router.post("/stocktake-orders/{stocktake_id}/complete", name="complete_stocktake_order")
+@router.post(
+    "/stocktake-orders/{stocktake_id}/complete",
+    name="complete_stocktake_order",
+    response_model=ApiResponse[ops.StocktakeOrderOut],
+)
 def complete_stocktake_order(stocktake_id: int, user: User = Depends(_ST_COMPLETE), db: Session = Depends(get_db)):
     return ok(
         ops.StocktakeOrderOut.model_validate(StocktakeService(db).complete(stocktake_id, user.id)).model_dump()
     )
 
 
-@router.post("/stocktake-orders/{stocktake_id}/cancel", name="cancel_stocktake_order")
+@router.post(
+    "/stocktake-orders/{stocktake_id}/cancel", name="cancel_stocktake_order", response_model=ApiResponse[ops.StocktakeOrderOut]
+)
 def cancel_stocktake_order(
     stocktake_id: int,
     payload: ps.CancelIn | None = None,
@@ -247,7 +298,11 @@ def cancel_stocktake_order(
     return ok(ops.StocktakeOrderOut.model_validate(StocktakeService(db).cancel(stocktake_id, reason)).model_dump())
 
 
-@router.post("/stocktake-orders/{stocktake_id}/reverse", name="reverse_stocktake_order")
+@router.post(
+    "/stocktake-orders/{stocktake_id}/reverse",
+    name="reverse_stocktake_order",
+    response_model=ApiResponse[ops.StocktakeOrderOut],
+)
 def reverse_stocktake_order(
     stocktake_id: int,
     payload: ps.CancelIn | None = None,

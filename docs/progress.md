@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**M8 主数据前端页完成**（六类主数据 CRUD + 权限置灰；`make verify` 绿且 **0 skip**）。
+- **里程碑**：**M8 前端业务页面完成**（主数据 + 采购 + 库存 + 决策前端；`make verify` 绿且 **0 skip**，已重建部署）。
 - **更新时间**：2026-09-19
 
 ## 已完成
@@ -39,13 +39,15 @@
 
 - [x] **M8 主数据前端页（本会话垂直切片）**：新增 schema 驱动通用 CRUD 视图 `frontend/src/views/master/MasterDataView.vue` + 六类配置 `masterConfigs.ts`（物资分类/物资/单位/仓库/库位/供应商）：关键字与分类/仓库/状态筛选、分页、新增/编辑弹窗、删除（软删）、启停用；`src/api/master.ts` 六类 CRUD 封装，接口类型全部由 OpenAPI 生成；后端新增 `CurrentUserOut`，登录与 `/auth/me` 返回 `permissions`，前端 `useAuth.hasPerm` 按 `material:manage` 隐藏/禁用按钮；侧边栏新增「主数据」子菜单与路由（`/master/*`）；**未引入新依赖**。
 
+- [x] **M8 子切片 2：采购 / 库存前端 + 接口类型化 + 部署更新**：给 `purchase.py`/`inventory.py`/`inventory_ops.py`/`ledger.py` 四组接口补 `ApiResponse[T]`/`PageOut[T]` 的 `response_model` 并重跑 `gen:api`；新增通用单据组件 `frontend/src/components/DocumentView.vue` + `document.ts`，新增 `src/api/purchase.ts`、`src/api/inventory.ts`、`src/composables/useMasterOptions.ts`、`src/utils/{format,status}.ts`；页面：请购单 / 采购订单 / 到货验收单、库存查询（结存/批次/流水 + 一键对账）、入库 / 出库 / 调拨 / 盘点单、库存预警；侧边栏增「采购管理」「库存管理」；动作按 `purchase:*`/`inventory:*` 权限隐藏；重建 api/web 镜像并 `make up`。
+
 ## 进行中
 
 - [ ] 无
 
 ## 下一步（只做这一条）
 
-**采购前端页（请购单 / 采购订单 / 到货单）**：先给 `backend/app/api/v1/purchase.py` 的接口补 `ApiResponse[T]`/`PageOut[T]` 的 `response_model`（参考 `schema/common.py` 与 M6/M8 做法），重跑导出 OpenAPI + `npm run gen:api`；再做只读列表 + 关键动作（请购单提交/审批/转采购订单、采购订单确认、到货单提交）。
+**operation_log 写入逻辑**：表已建但未落库；按 `docs/db-schema.md` §10.6（追加写、不更新）实现请求级日志中间件或 service 钩子（记录 user/trace_id/path/method/result/duration/resource），并提供只读查询接口；注意不要记录密码/token。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -103,6 +105,11 @@
 | M8 主数据列表筛选 | 后端 `master` list 只支持 page/page_size；前端首版为「拉取前 200 条 + 内存筛选/分页」，超过 200 条需后续给后端加关键字/条件查询参数 | M8 记录 |
 | M8 主数据编辑限制 | `MaterialCategoryUpdate` 无 `parent_id`、各 `*Update` 无 `code`、`LocationUpdate` 无 `warehouse_id`；前端这些字段编辑时禁用且不提交 | M8 记录 |
 | M8 前端权限置灰 | 按钮按 `material:manage` 隐藏/禁用；后端 403 仍是最终兜底（不信任前端） | M8 记录 |
+| M8 采购/库存接口类型化 | `purchase.py`/`inventory.py`/`inventory_ops.py`/`ledger.py` 已补 `response_model`（仅 delete 等 `ok(None)` 端点未加）；新增/改接口后必须重跑 `npm run gen:api` 同步 `src/api/schema.d.ts` | M8 记录 |
+| M8 通用单据组件 | `src/components/DocumentView.vue` + `document.ts` 统一采购/库存列表页；动作 `silent` 用于打开弹窗类（自行提示/刷新）；列表服务端分页；删除仅草稿态可见 | M8 记录 |
+| M8 下拉数据上限 | `useMasterOptions` 一次拉主数据前 200 条做下拉；物资 >200 时下拉不全，需后端加 keyword 查询后改为按需搜索 | M8 记录 |
+| M8 验收库位 | `useMasterOptions` 无库位选项，到货验收的 `location_id` 用可选数字输入；后续可做「仓库→库位」联动下拉 | M8 记录 |
+| M8 部署更新 | `make up` 重建 `erp-api`/`erp-web`（`erp-postgres` 不重建）；前端多阶段源码构建，`deploy/.env` 的 `NPM_REGISTRY`/`PIP_INDEX_URL` 走镜像源 | M8 记录 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -123,3 +130,4 @@
 | 2026-09-19 | M7 系统测试 + Locust 性能：系统测试用测试库覆盖入库过账并断言对账；Locust 场景仅 GET + 登录 | 系统测试 `reconcile.ok=true`；性能测试不写业务表、不改结存 |
 | 2026-09-19 | M7 LSTM 对比：只读合成需求（内存生成），只写 `ml/results/`；未连接/未写业务库表 | 不涉及结存变更；业务表零写入 |
 | 2026-09-19 | M8 主数据前端：仅通过 `/material-categories`、`/materials`、`/units`、`/suppliers`、`/warehouses`、`/locations` API 读写档案，不触碰 `inventory`/`inventory_batch`/`inventory_transaction`；登录返回权限码为只读 | 不涉及结存变更；`GET /inventory/reconcile` 口径不变；SQLite 后端 66 passed |
+| 2026-09-19 | M8 采购/库存前端：仅通过 `purchase-requisitions`/`purchase-orders`/`supplier-deliveries`/`inbound-orders`/`outbound-orders`/`transfer-orders`/`stocktake-orders`/`inventory*`/`stock-alerts` API 操作；过账/红冲调用后端 service（`stock_ledger` 唯一结存入口），前端不直连库、不改结存；库存查询页提供一键 `GET /inventory/reconcile` | 不涉及结存变更；后端 66 passed，`make verify` 绿 |
