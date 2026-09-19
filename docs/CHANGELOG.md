@@ -169,3 +169,15 @@
 - **验证**：`make verify` 绿（ruff 通过；`pytest 61 passed`；ml 58 passed；迁移链 1455 行；不变量检查通过）。真库：PG16 双跑 61 passed；迁移在全新库 `upgrade→downgrade -1→upgrade` 可逆；`params/metrics/feature_config` 为 `jsonb`；`uq_rs_open`/`uq_replenishment_policy_code` 为部分唯一索引。
 - **回滚**：`git revert <本次提交>`；若已建表，`alembic downgrade 0006_ledger`。
 - **备注**：σLT 库内暂无来源，暂取 0（公式第二项退化）；在途为物料级（复用 `in_transit_by_material`）；S 仅写入 `reason`（§12.6 无该列）。
+
+## 2026-09-19 · M6 前端补货建议页 + API 类型化
+
+- **改动**：
+  - 新增前端工程（Vue 3 + TS + Vite 5 + Element Plus + vue-router + axios）：`frontend/package.json`、`vite.config.ts`（dev 仅 `127.0.0.1:5173`，`/api` 代理到 `127.0.0.1:8000`）、`tsconfig.json`、`eslint.config.js`（ESLint 9 flat + eslint-plugin-vue + typescript-eslint）。
+  - 分层实现：`src/api/http.ts`（统一解包 `{code,message,data,trace_id}`、401 跳登录）、`src/api/auth.ts`/`master.ts`/`replenishment.ts`；`src/composables/useAuth.ts`；`src/router`（登录守卫）；`src/layouts/MainLayout.vue`；`src/views/LoginView.vue`、`ReplenishmentView.vue`（策略 CRUD、建议列表/详情、确认/驳回、单条与批量一键转请购单；详情展示可用量/ROP/SS/预测值/参数来源/reason）。
+  - 接口类型由后端 OpenAPI 生成（`frontend/openapi.json` + `src/api/schema.d.ts`，脚本 `npm run gen:api`），不手写重复类型；为此给 M6/认证/主数据/分页接口补 `response_model`（新增 `backend/app/schema/common.py` 的 `ApiResponse[T]`/`PageOut[T]`）。
+  - `frontend/README.md` 说明开发、生成类型与质量门禁。
+- **原因**：`docs/progress.md` 的"下一步" M6 —— 补齐方案 M6 的"前端 + 一键转请购单"验收项，使补货决策闭环可在界面演示。
+- **验证**：`make verify` 绿且 **0 skip**（前端 lint 由 skip 转真检查；后端 61 passed；ml 58 passed；迁移链 1455 行）。前端 `npm run lint` / `vue-tsc --noEmit` / `npm run build` 均通过；PG16 后端 61 passed。运行时冒烟：`npm run dev` + `make serve`，经 Vite 代理 `GET /api/health`、`POST /auth/login`(admin)、创建策略、`POST /replenishment-suggestions/generate`、建议列表均正常。
+- **回滚**：`git revert <本次提交>`（删除 `frontend/` 新增文件即可；`node_modules/`/`dist/` 不入库；后端 `response_model` 改动随之回滚）。
+- **备注**：前端依赖在 `frontend/node_modules`（项目内隔离、不入库）；`openapi.json`/`schema.d.ts` 为生成快照，接口变更后重跑 `npm run gen:api`；生产静态托管/nginx 留 M7。

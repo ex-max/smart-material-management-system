@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.core.permissions import Perm
 from app.core.response import ok
 from app.schema import master as ms
+from app.schema.common import ApiResponse, PageOut
 from app.service.master import (
     LocationService,
     MaterialCategoryService,
@@ -22,7 +23,7 @@ def register(path, tag, service_cls, create_schema, update_schema, out_schema, n
     view = require_perm(Perm.MATERIAL_VIEW)
     manage = require_perm(Perm.MATERIAL_MANAGE)
 
-    @router.get(path, name="list_" + name, tags=[tag])
+    @router.get(path, name="list_" + name, tags=[tag], response_model=ApiResponse[PageOut[out_schema]])
     def list_items(
         page: int = Query(1, ge=1),
         page_size: int = Query(20, ge=1, le=200),
@@ -32,15 +33,21 @@ def register(path, tag, service_cls, create_schema, update_schema, out_schema, n
         items, total = service_cls(db).list(page, page_size)
         return ok({"total": total, "items": [out_schema.model_validate(x).model_dump() for x in items]})
 
-    @router.post(path, name="create_" + name, status_code=201, tags=[tag])
+    @router.post(
+        path, name="create_" + name, status_code=201, tags=[tag], response_model=ApiResponse[out_schema]
+    )
     def create_item(payload: create_schema, user=Depends(manage), db: Session = Depends(get_db)):
         return ok(out_schema.model_validate(service_cls(db).create(payload, user.id)).model_dump())
 
-    @router.get(path + "/{item_id}", name="get_" + name, tags=[tag])
+    @router.get(
+        path + "/{item_id}", name="get_" + name, tags=[tag], response_model=ApiResponse[out_schema]
+    )
     def get_item(item_id: int, user=Depends(view), db: Session = Depends(get_db)):
         return ok(out_schema.model_validate(service_cls(db).get(item_id)).model_dump())
 
-    @router.put(path + "/{item_id}", name="update_" + name, tags=[tag])
+    @router.put(
+        path + "/{item_id}", name="update_" + name, tags=[tag], response_model=ApiResponse[out_schema]
+    )
     def update_item(item_id: int, payload: update_schema, user=Depends(manage), db: Session = Depends(get_db)):
         return ok(out_schema.model_validate(service_cls(db).update(item_id, payload)).model_dump())
 

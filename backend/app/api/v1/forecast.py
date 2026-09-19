@@ -9,6 +9,7 @@ from app.core.permissions import Perm
 from app.core.response import ok
 from app.model.user import User
 from app.schema import forecast as fs
+from app.schema.common import ApiResponse, PageOut
 from app.service.forecast import DemandSeriesMetaService, ForecastService, ModelRegistryService
 
 router = APIRouter(tags=["预测"])
@@ -18,14 +19,14 @@ _MANAGE = require_perm(Perm.FORECAST_MANAGE)
 
 
 # ---------------- 预测批次 ----------------
-@router.post("/forecast-runs", status_code=201, name="create_forecast_run")
+@router.post("/forecast-runs", status_code=201, name="create_forecast_run", response_model=ApiResponse[fs.ForecastRunOut])
 def create_forecast_run(
     payload: fs.ForecastRunCreate, user: User = Depends(_MANAGE), db: Session = Depends(get_db)
 ):
     return ok(fs.ForecastRunOut.model_validate(ForecastService(db).create_run(payload, user.id)).model_dump())
 
 
-@router.get("/forecast-runs", name="list_forecast_runs")
+@router.get("/forecast-runs", name="list_forecast_runs", response_model=ApiResponse[PageOut[fs.ForecastRunOut]])
 def list_forecast_runs(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -37,12 +38,12 @@ def list_forecast_runs(
     return ok({"total": total, "items": [fs.ForecastRunOut.model_validate(x).model_dump() for x in items]})
 
 
-@router.get("/forecast-runs/{run_id}", name="get_forecast_run")
+@router.get("/forecast-runs/{run_id}", name="get_forecast_run", response_model=ApiResponse[fs.ForecastRunOut])
 def get_forecast_run(run_id: int, user: User = Depends(_VIEW), db: Session = Depends(get_db)):
     return ok(fs.ForecastRunOut.model_validate(ForecastService(db).get_run(run_id)).model_dump())
 
 
-@router.post("/forecast-runs/{run_id}/results", name="add_forecast_results")
+@router.post("/forecast-runs/{run_id}/results", name="add_forecast_results", response_model=ApiResponse[fs.IngestResult])
 def add_forecast_results(
     run_id: int,
     payload: fs.ForecastResultBulkIn,
@@ -52,7 +53,7 @@ def add_forecast_results(
     return ok(ForecastService(db).add_results(run_id, payload))
 
 
-@router.get("/forecast-runs/{run_id}/results", name="list_forecast_results")
+@router.get("/forecast-runs/{run_id}/results", name="list_forecast_results", response_model=ApiResponse[PageOut[fs.ForecastResultOut]])
 def list_forecast_results(
     run_id: int,
     page: int = Query(1, ge=1),
@@ -64,7 +65,7 @@ def list_forecast_results(
     return ok({"total": total, "items": [fs.ForecastResultOut.model_validate(x).model_dump() for x in items]})
 
 
-@router.post("/forecast-runs/{run_id}/finish", name="finish_forecast_run")
+@router.post("/forecast-runs/{run_id}/finish", name="finish_forecast_run", response_model=ApiResponse[fs.ForecastRunOut])
 def finish_forecast_run(
     run_id: int,
     payload: fs.ForecastRunFinishIn,
@@ -75,7 +76,7 @@ def finish_forecast_run(
 
 
 # ---------------- 需求序列元数据 ----------------
-@router.get("/demand-series-meta", name="list_demand_series_meta")
+@router.get("/demand-series-meta", name="list_demand_series_meta", response_model=ApiResponse[PageOut[fs.DemandSeriesMetaOut]])
 def list_demand_series_meta(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -87,7 +88,7 @@ def list_demand_series_meta(
     return ok({"total": total, "items": [fs.DemandSeriesMetaOut.model_validate(x).model_dump() for x in items]})
 
 
-@router.post("/demand-series-meta", name="upsert_demand_series_meta")
+@router.post("/demand-series-meta", name="upsert_demand_series_meta", response_model=ApiResponse[fs.DemandSeriesMetaOut])
 def upsert_demand_series_meta(
     payload: fs.DemandSeriesMetaIn, user: User = Depends(_MANAGE), db: Session = Depends(get_db)
 ):
@@ -96,7 +97,7 @@ def upsert_demand_series_meta(
 
 
 # ---------------- 模型注册 ----------------
-@router.get("/model-registry", name="list_model_registry")
+@router.get("/model-registry", name="list_model_registry", response_model=ApiResponse[PageOut[fs.ModelRegistryOut]])
 def list_model_registry(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -108,13 +109,13 @@ def list_model_registry(
     return ok({"total": total, "items": [fs.ModelRegistryOut.model_validate(x).model_dump() for x in items]})
 
 
-@router.post("/model-registry", status_code=201, name="create_model_registry")
+@router.post("/model-registry", status_code=201, name="create_model_registry", response_model=ApiResponse[fs.ModelRegistryOut])
 def create_model_registry(
     payload: fs.ModelRegistryCreate, user: User = Depends(_MANAGE), db: Session = Depends(get_db)
 ):
     return ok(fs.ModelRegistryOut.model_validate(ModelRegistryService(db).create(payload, user.id)).model_dump())
 
 
-@router.get("/model-registry/{model_id}", name="get_model_registry")
+@router.get("/model-registry/{model_id}", name="get_model_registry", response_model=ApiResponse[fs.ModelRegistryOut])
 def get_model_registry(model_id: int, user: User = Depends(_VIEW), db: Session = Depends(get_db)):
     return ok(fs.ModelRegistryOut.model_validate(ModelRegistryService(db).get(model_id)).model_dump())

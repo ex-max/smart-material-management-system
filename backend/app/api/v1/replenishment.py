@@ -10,6 +10,7 @@ from app.core.response import ok
 from app.model.user import User
 from app.schema import purchase as ps
 from app.schema import replenishment as rs
+from app.schema.common import ApiResponse, PageOut
 from app.service.replenishment import ReplenishmentPolicyService, ReplenishmentSuggestionService
 
 router = APIRouter(tags=["补货决策"])
@@ -20,7 +21,7 @@ _CONVERT = require_perm(Perm.REPLENISHMENT_CONVERT)
 
 
 # ---------------- 补货策略 ----------------
-@router.get("/replenishment-policies", name="list_replenishment_policies")
+@router.get("/replenishment-policies", name="list_replenishment_policies", response_model=ApiResponse[PageOut[rs.ReplenishmentPolicyOut]])
 def list_replenishment_policies(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -34,7 +35,7 @@ def list_replenishment_policies(
     return ok({"total": total, "items": [rs.ReplenishmentPolicyOut.model_validate(x).model_dump() for x in items]})
 
 
-@router.post("/replenishment-policies", status_code=201, name="create_replenishment_policy")
+@router.post("/replenishment-policies", status_code=201, name="create_replenishment_policy", response_model=ApiResponse[rs.ReplenishmentPolicyOut])
 def create_replenishment_policy(
     payload: rs.ReplenishmentPolicyCreate, user: User = Depends(_MANAGE), db: Session = Depends(get_db)
 ):
@@ -42,13 +43,13 @@ def create_replenishment_policy(
     return ok(rs.ReplenishmentPolicyOut.model_validate(obj).model_dump())
 
 
-@router.get("/replenishment-policies/{policy_id}", name="get_replenishment_policy")
+@router.get("/replenishment-policies/{policy_id}", name="get_replenishment_policy", response_model=ApiResponse[rs.ReplenishmentPolicyOut])
 def get_replenishment_policy(policy_id: int, user: User = Depends(_VIEW), db: Session = Depends(get_db)):
     obj = ReplenishmentPolicyService(db).get(policy_id)
     return ok(rs.ReplenishmentPolicyOut.model_validate(obj).model_dump())
 
 
-@router.put("/replenishment-policies/{policy_id}", name="update_replenishment_policy")
+@router.put("/replenishment-policies/{policy_id}", name="update_replenishment_policy", response_model=ApiResponse[rs.ReplenishmentPolicyOut])
 def update_replenishment_policy(
     policy_id: int,
     payload: rs.ReplenishmentPolicyUpdate,
@@ -66,7 +67,7 @@ def delete_replenishment_policy(policy_id: int, user: User = Depends(_MANAGE), d
 
 
 # ---------------- 补货建议 ----------------
-@router.post("/replenishment-suggestions/generate", name="generate_replenishment_suggestions")
+@router.post("/replenishment-suggestions/generate", name="generate_replenishment_suggestions", response_model=ApiResponse[rs.GenerateResult])
 def generate_replenishment_suggestions(
     material_id: int | None = Query(None),
     warehouse_id: int | None = Query(None),
@@ -77,7 +78,7 @@ def generate_replenishment_suggestions(
     return ok(rs.GenerateResult.model_validate(result).model_dump())
 
 
-@router.post("/replenishment-suggestions/convert-batch", name="batch_convert_replenishment_suggestions")
+@router.post("/replenishment-suggestions/convert-batch", name="batch_convert_replenishment_suggestions", response_model=ApiResponse[list[rs.ConvertResult]])
 def batch_convert_replenishment_suggestions(
     payload: rs.BatchConvertIn, user: User = Depends(_CONVERT), db: Session = Depends(get_db)
 ):
@@ -85,7 +86,7 @@ def batch_convert_replenishment_suggestions(
     return ok([rs.ConvertResult.model_validate(x).model_dump() for x in results])
 
 
-@router.get("/replenishment-suggestions", name="list_replenishment_suggestions")
+@router.get("/replenishment-suggestions", name="list_replenishment_suggestions", response_model=ApiResponse[PageOut[rs.ReplenishmentSuggestionOut]])
 def list_replenishment_suggestions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -102,7 +103,7 @@ def list_replenishment_suggestions(
     return ok({"total": total, "items": [rs.ReplenishmentSuggestionOut.model_validate(x).model_dump() for x in items]})
 
 
-@router.get("/replenishment-suggestions/{suggestion_id}", name="get_replenishment_suggestion")
+@router.get("/replenishment-suggestions/{suggestion_id}", name="get_replenishment_suggestion", response_model=ApiResponse[rs.ReplenishmentSuggestionOut])
 def get_replenishment_suggestion(
     suggestion_id: int, user: User = Depends(_VIEW), db: Session = Depends(get_db)
 ):
@@ -110,7 +111,7 @@ def get_replenishment_suggestion(
     return ok(rs.ReplenishmentSuggestionOut.model_validate(obj).model_dump())
 
 
-@router.post("/replenishment-suggestions/{suggestion_id}/confirm", name="confirm_replenishment_suggestion")
+@router.post("/replenishment-suggestions/{suggestion_id}/confirm", name="confirm_replenishment_suggestion", response_model=ApiResponse[rs.ReplenishmentSuggestionOut])
 def confirm_replenishment_suggestion(
     suggestion_id: int,
     payload: rs.SuggestionConfirmIn,
@@ -121,7 +122,7 @@ def confirm_replenishment_suggestion(
     return ok(rs.ReplenishmentSuggestionOut.model_validate(obj).model_dump())
 
 
-@router.post("/replenishment-suggestions/{suggestion_id}/reject", name="reject_replenishment_suggestion")
+@router.post("/replenishment-suggestions/{suggestion_id}/reject", name="reject_replenishment_suggestion", response_model=ApiResponse[rs.ReplenishmentSuggestionOut])
 def reject_replenishment_suggestion(
     suggestion_id: int,
     payload: rs.SuggestionRejectIn,
@@ -132,7 +133,7 @@ def reject_replenishment_suggestion(
     return ok(rs.ReplenishmentSuggestionOut.model_validate(obj).model_dump())
 
 
-@router.post("/replenishment-suggestions/{suggestion_id}/convert", name="convert_replenishment_suggestion")
+@router.post("/replenishment-suggestions/{suggestion_id}/convert", name="convert_replenishment_suggestion", response_model=ApiResponse[rs.ConvertResponse])
 def convert_replenishment_suggestion(
     suggestion_id: int, user: User = Depends(_CONVERT), db: Session = Depends(get_db)
 ):

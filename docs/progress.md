@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**M6 后端完成**（`forecast_*`/`replenishment_*` 六表 + 决策服务 + API + 一键转请购单，SQLite + PG 双跑 61 passed）；下一步 **M6 前端补货建议页（消费 `/replenishment-*` API）**
+- **里程碑**：**M6 完成**（后端 `forecast_*`/`replenishment_*` 六表 + 决策服务 + API + 一键转请购单；前端补货建议页；`make verify` 绿且 **0 skip**）；下一步 **M7 工程化（Docker 一键部署 + 测试/性能 + 文档；余力项 LSTM 对比）**
 - **更新时间**：2026-09-19
 
 ## 已完成
@@ -27,13 +27,15 @@
 
 - [x] **M6 补货决策闭环后端化（后端切片）**：新增预测与决策六表 ORM（`app/model/forecast.py`/`replenishment.py`：`demand_series_meta`/`model_registry`/`forecast_run`/`forecast_result`/`replenishment_policy`/`replenishment_suggestion`）+ 迁移 `0007_forecast_replenishment`（CHECK、唯一与部分唯一索引、完整 downgrade，PG 上 `upgrade→downgrade -1→upgrade` 可逆、`jsonb`/`postgresql_where` 生效）；分层实现：预测批次/结果入库（幂等 upsert、`FR-YYYYMMDD-####`）、需求序列元数据 upsert、模型注册；补货策略 CRUD；**决策服务**读取 `forecast_result`（最新 SUCCESS/PARTIAL 批次均值 D̂）+ `demand_series_meta.std_daily`（σD），按 CSL 公式 `SS=z·√(LT·σD²+D̂²·σLT²)`、`ROP=D̂·LT+SS`、`S=ROP+D̂·复核周期` 生成可解释建议（IP=结存−锁定+在途 ≤ ROP 才落库，qty=S−IP 按 min_order_qty/pack_size 向上取整，EOQ 仅参考，reason 含公式/可用量/参数来源）；建议确认（OPEN→SUGGESTED，可改 final_qty）/驳回；**一键转请购单**（SUGGESTED→CONVERTED，生成 DRAFT 请购单并写 `converted_pr_id/converted_at`，走既有状态机）；新增权限码 `replenishment:view/manage/convert`；新增 `tests/test_forecast.py`/`tests/test_replenishment.py`（11 条）。
 
+- [x] **M6 前端补货建议页（方案 M6 的"前端 + 一键转请购单"验收项）**：新增前端工程（Vue 3 + TS + Vite 5 + Element Plus + vue-router + axios）：`frontend/package.json`、`vite.config.ts`（`/api` 代理到 127.0.0.1:8000、dev 仅绑 127.0.0.1:5173）、`tsconfig.json`、`eslint.config.js`（ESLint 9 flat + eslint-plugin-vue + typescript-eslint）；`src/api/http.ts` 统一解包 `{code,message,data,trace_id}`、401 跳登录；`src/composables/useAuth.ts`、`src/router` 登录守卫、`src/layouts/MainLayout.vue`、`LoginView.vue` 与 `ReplenishmentView.vue`（策略 CRUD、建议列表/详情/确认/驳回、单条与批量一键转请购单，详情展示可用量/ROP/SS/预测/参数来源/reason）；接口类型由后端 OpenAPI 生成（`openapi.json` + `src/api/schema.d.ts`，脚本 `npm run gen:api`），为此给 M6/认证/主数据接口补 `response_model`（新增 `backend/app/schema/common.py` 的 `ApiResponse[T]`/`PageOut[T]`），**不手写重复类型**。
+
 ## 进行中
 
 - [ ] 无
 
 ## 下一步（只做这一条）
 
-**M6 前端补货建议页** —— 后端 M6 已就绪：接口类型从 `/api/openapi.json` 生成（勿手写）；页面覆盖补货策略维护 + 建议列表/详情（展示 `rop`/`safety_stock`/`daily_demand_hat`/`available_qty`/`policy_id`/`forecast_run_id`/`reason`）+ 确认/驳回 + 一键转请购单；复用既有权限码 `replenishment:view/manage/convert`。
+**M7 工程化（Docker 一键部署 + 测试/性能 + 文档；余力项 LSTM 对比）** —— 目标"一键部署"：把 backend/frontend/db 纳入 `deploy/` 的 compose（仅 127.0.0.1、独立卷、healthcheck），补启动/迁移/静态托管与 `deploy/README.md`；补关键性能/并发用例与文档；余力再做 LSTM 与 LightGBM 对比实验（复用 `ml/` 回测协议）。涉服务器操作先加载 `server-ops`。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -74,6 +76,11 @@
 | M6 提前期取值 | 决策服务提前期 = policy.lead_time_days > material.lead_time_days；暂未接入 §8 的供货价/供应商提前期优先级 | M6 记录 |
 | M6 S（order_up_to）落点 | §12.6 无 `order_up_to` 列，S 写入 `reason` 文本；如需单独落库再加列 | M6 记录 |
 
+| M6 前端工程 | 前端此前为空占位；本切片新增 Vue3+TS+Vite5+Element Plus 脚手架。依赖在 `frontend/node_modules`（项目内隔离、不入库）；接口类型由 `npm run gen:api` 从后端 OpenAPI 生成 | M6 完成 |
+| M6 API 类型化 | 为让 OpenAPI 产出可用类型，给 M6/认证/主数据接口加了 `response_model`（`ApiResponse[T]`/`PageOut[T]`）；接口变更后需重跑 `npm run gen:api` 同步 `src/api/schema.d.ts` | M6 记录 |
+| M6 前端未覆盖权限置灰 | 前端未按权限码隐藏按钮（`UserOut` 不含 permissions），越权时由后端 403 + 全局提示兜底 | M6 记录 |
+| M6 dev 代理 | Vite dev 仅 `127.0.0.1:5173`，`/api` 代理到 `127.0.0.1:8000`；生产部署（nginx/静态托管）留 M7 | M6 记录 |
+
 ## 对账状态（库存相关改动必填）
 
 | 日期 | 对账项 | 结果 |
@@ -88,3 +95,4 @@
 | 2026-09-19 | M4 特征/GBM 实验只读合成数据与 `ml/results/`；未连接/未写业务库表，未触及 `inventory`/`inventory_transaction`/`forecast_*` | 不涉及结存变更；业务表零写入 |
 | 2026-09-19 | M5 库存仿真：只读合成需求（内存生成，不重写 `data/`）与 `ml/results/`；未连接业务库，未写 `inventory`/`inventory_transaction`/`forecast_*`/`replenishment_*`；补货建议/策略仅为 ML 结果表（字段对齐 §12.5/§12.6） | 不涉及结存变更；业务表零写入 |
 | 2026-09-19 | M6 决策服务只读 `inventory`（结存/锁定）与在途汇总，生成 `replenishment_*` 建议；不写 `inventory`/`inventory_batch`/`inventory_transaction`，不改变结存 | 不涉及结存变更；`GET /inventory/reconcile` 口径不变；SQLite + PG 双跑 61 passed |
+| 2026-09-19 | M6 前端补货建议页仅通过 `/replenishment-*` API 读写建议/策略，不直连数据库；确认/转单调用后端既有事务与状态机 | 不涉及结存变更；前端只读 API，`converted_pr_id` 来源链由后端保证 |

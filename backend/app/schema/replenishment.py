@@ -5,6 +5,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schema.purchase import PROut
+
 
 class ORMBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -134,3 +136,8 @@ class ConvertResult(BaseModel):
     status: str
     converted_pr_id: int | None
     pr_doc_no: str | None
+
+
+class ConvertResponse(BaseModel):
+    suggestion: ReplenishmentSuggestionOut
+    pr: PROut
