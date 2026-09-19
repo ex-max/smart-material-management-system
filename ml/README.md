@@ -9,7 +9,7 @@
 
 ## 环境（项目内隔离）
 
-依赖见 `pyproject.toml`（numpy / pandas / scipy / statsmodels / pyarrow / matplotlib / joblib / psycopg）。
+依赖见 `pyproject.toml`（numpy / pandas / scipy / statsmodels / lightgbm / pyarrow / matplotlib / joblib / psycopg）。
 本机系统 python3 缺 ensurepip，用 `--without-pip` 引导：
 
 ```bash
@@ -26,6 +26,7 @@ curl -fsSL -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py
 |---|---|
 | `make gen-data` | 生成 seed=1、800 SKU×3 年日需求 → `data/seed_1/` |
 | `make baseline` | 基线滚动回测（Naive / 季节 Naive / MA7 / MA28 / ETS）→ `ml/results/` |
+| `make forecast` | M4 预测实验（滞后/滑动/日历特征 + LightGBM + Croston/TSB/ARIMA，按象限映射）→ `ml/results/` |
 | `make ml-test` / `make ml-lint` | ML 单元测试 / lint |
 
 也可直接运行：
@@ -33,6 +34,7 @@ curl -fsSL -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py
 cd ml
 .venv/bin/python -m erp_ml.generate --seed 1 --skus 800 --years 3 --out ../data
 .venv/bin/python -m erp_ml.baseline --seeds 1 2 3 --max-series 200 --tag m3-baseline
+.venv/bin/python -m erp_ml.experiment --seeds 1 2 3 --max-series 100 --tag m4-forecast
 ```
 
 ## 冻结的生成器参数（M3）
@@ -90,6 +92,34 @@ cd ml
 - 本机沙箱下 `/dev/shm` 不可写，joblib 检测不到命名信号量会自动**退化串行**（多进程在本环境不可用）；
   代码仍按 joblib 并行编写，换到正常环境即并行执行。
 
+## 特征工程（M4，erp_ml/features.py）
+
+对目标时刻 t，只用 t 之前的观测构造特征（禁止未来信息）：
+
+| 类别 | 特征 |
+|---|---|
+| 滞后 | lag_1/2/3/7/14/28 |
+| 滑动 | 窗口 7/14/28 的 mean / std / nonzero，以及截断到 28 的 days_since_nonzero |
+| 日历 | 周内 sin/cos、月 sin/cos、是否周末、年内日 sin/cos |
+| 序列静态 | log1p(均值)、CV²、非零占比、ADI（只用训练窗计算） |
+
+共 27 维。训练样本为「目标时刻 t x 序列 j」的面板；预测用递归多步（预测值回填滞后特征）。
+未来区段一律置 NaN，ml/tests/test_features.py 断言改写未来不改变任何特征。
+
+## 模型与分层映射（M4）
+
+| 模型 | 说明 |
+|---|---|
+| naive / seasonal_naive / ma7 / ma28 / ets | M3 基线 |
+| arima | ARIMA(0,1,1)，Hannan–Rissanen 快速估计（差分后 MA(1)，平滑/波动象限对比） |
+| croston | Croston：非零需求量与需求间隔分别 SES（间歇/块状主用） |
+| tsb | Teunter–Syntetos–Babai：每期更新发生概率（间歇/块状对比） |
+| lightgbm | 面板级全局模型（erp_ml/gbm.py），每个 origin 重训，平滑/波动主用 |
+
+make forecast 默认不跑 ETS（单序列慢，M3 基线已含，可用 --local-models 显式加回）；其余模型与 M3 同一份分层抽样。
+映射（models.model_mapping()）：平滑/波动 → LightGBM（对比 ARIMA）；间歇/块状 → Croston（对比 TSB）。
+回测口径与 M3 完全一致（rolling-origin、初始训练窗 180、步长 7、horizon 7/14/30，sMAPE/MASE）。
+
 ## 结果落盘（`ml/results/`）
 
 ```
@@ -98,6 +128,7 @@ ml/results/
 │   ├── config.json     # 冻结参数、backtest 配置、seed、data_sha256、commit
 │   ├── metrics.csv     # 逐 seed × 序列 × horizon × 模型明细
 │   ├── summary.csv     # 象限 × 模型 × horizon 汇总（均值±标准差）
+│   ├── model_mapping.csv  # 逐象限：推荐/对比模型与最优模型 sMAPE
 │   ├── segments.csv    # 分层结果（ADI/CV²/象限/ABC）
 │   └── figures/*.png   # 300dpi 论文用图
 ├── segments.csv        # latest 分层快照
@@ -109,6 +140,5 @@ ml/results/
 ## 已实现 / 待实现
 
 - [x] M3：数据生成器 + 需求分层 + Naive/MA/ETS 基线滚动回测
-- [ ] M4：特征工程与评估框架加厚
-- [ ] M5：LightGBM + Croston + ADI/CV² 模型映射
-- [ ] M6：动态 SS/ROP、补货建议、A/B 库存仿真（多种子 + Wilcoxon）
+- [x] M4：滞后/滑动/日历特征 + LightGBM 面板模型 + Croston/TSB/ARIMA 与 ADI/CV² 分层映射
+- [ ] M5：动态 SS/ROP、补货建议、A/B 库存仿真（多种子 + Wilcoxon）

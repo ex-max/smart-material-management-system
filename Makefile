@@ -1,5 +1,5 @@
 # 毕设项目统一入口（人和 agent 都用这几个命令）
-.PHONY: verify test lint migrate gen-data baseline ml-venv ml-test ml-lint serve clean
+.PHONY: verify test lint migrate gen-data baseline forecast ml-venv ml-test ml-lint serve clean
 
 verify:            ## 质量门禁：结构 + lint + 测试 + 迁移 + ML（交付前必跑）
 	./scripts/verify.sh
@@ -18,6 +18,9 @@ gen-data:          ## 生成模拟业务数据（参数见 docs/plan；产物落
 
 baseline:          ## M3 基线预测滚动回测（结果落 ml/results/，不进 git）
 	cd ml && .venv/bin/python -m erp_ml.baseline --seeds 1 2 3 --skus 800 --years 3 --max-series 100 --tag m3-baseline
+
+forecast:          ## M4 特征工程 + LightGBM 预测实验（结果落 ml/results/，不进 git）
+	cd ml && .venv/bin/python -m erp_ml.experiment --seeds 1 2 3 --skus 800 --years 3 --max-series 100 --tag m4-forecast
 
 ml-venv:           ## 创建 ML 独立虚拟环境并安装依赖（项目内隔离）
 	cd ml && python3 -m venv --without-pip .venv \

@@ -16,7 +16,17 @@ import pandas as pd
 from .dataset import DemandDataset
 from .demand import generate_lead_times
 
-TRACKED_PACKAGES = ("numpy", "pandas", "scipy", "statsmodels", "pyarrow", "matplotlib", "joblib", "psycopg")
+TRACKED_PACKAGES = (
+    "numpy",
+    "pandas",
+    "scipy",
+    "statsmodels",
+    "lightgbm",
+    "pyarrow",
+    "matplotlib",
+    "joblib",
+    "psycopg",
+)
 
 
 def sha256_array(array: np.ndarray) -> str:

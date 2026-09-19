@@ -119,3 +119,20 @@
 
 
 
+## 2026-09-19 · 特征工程 + LightGBM + ARIMA/Croston 分层映射（M4）
+
+- **改动**：
+  - 新增 `ml/erp_ml/features.py`：滞后(1/2/3/7/14/28) + 滑动(7/14/28 的 mean/std/nonzero + 截断 days_since_nonzero) + 日历(7) + 序列静态(4) = **27 维**因果特征；`build_panel_training` / `build_row_features` 保证只用目标时刻之前的数据。
+  - 新增 `ml/erp_ml/gbm.py`：LightGBM 面板级全局模型（每个 origin 重训、递归多步；预测前把 origin 之后置 NaN 防泄漏）。
+  - `ml/erp_ml/models.py`：新增 ARIMA(0,1,1)（Hannan–Rissanen 快速估计）、Croston、TSB，以及 `model_mapping()` / `recommend_model()`（平滑/波动→lightgbm、间歇/块状→croston）。
+  - `ml/erp_ml/backtest.py`：新增 `backtest_global`（与 M3 同一 expanding-window rolling-origin 口径，输出同结构逐序列指标）。
+  - 新增 `ml/erp_ml/experiment.py` 与 `make forecast`；`ml/pyproject.toml` 加 `lightgbm>=4.7,<4.8`；`ml/README.md` 补 M4 章节；`ml/erp_ml/artifacts.py` 跟踪 lightgbm 版本。
+  - 新增测试 `ml/tests/test_features.py`、`test_models.py`、`test_gbm.py`（含“改写未来不影响特征”“预测忽略未来真实值”“LightGBM 可复现”）。
+- **原因**：`docs/progress.md` 的“下一步” M4 —— 在 M3 回测框架上补特征工程与 LightGBM，并按 ADI/CV² 象限做模型映射（补 ARIMA/Croston）。
+- **验证**：
+  - `make verify` 绿：后端 ruff + pytest 50 passed；ml ruff + pytest 27 passed；迁移链 1155 行；不变量检查通过。
+  - `make forecast`（seeds 1–3 × 每 seed 分层 100 序列 × horizon 7/14/30）→ `ml/results/runs/20260919-1051_m4-forecast/`（config / metrics / summary / segments / model_mapping / figures）。
+  - horizon=7 总体 MASE：ma28 0.870 / croston 0.874 / tsb 0.883 / arima 0.895 / lightgbm 0.901 / naive 1.059；分象限 MASE：Croston 间歇 0.914、块状 0.932 优于 naive（1.051/1.044），LightGBM 波动 0.779 与 ma28（0.771）接近、平滑 0.895。
+  - 依赖安装的健康检查前后一致（29 通过 / 0 警告 / 1 项既有 FAIL），见 `/root/dsh/CHANGELOG-ops.md`。
+- **回滚**：`git revert <本次提交>`；如需移除依赖：`ml/.venv/bin/pip uninstall -y lightgbm`（`data/`、`ml/results/`、`ml/.venv` 均不入库）。
+- **备注**：ETS 单序列实测每 seed 约 22–27min（M3 记录的 4.8s/序列偏低），故 M4 默认不含 ets，ETS 基线仍以 M3 run 为准；ARIMA 用 Hannan–Rissanen 以避免每 origin 的 MLE 开销。
