@@ -15,6 +15,13 @@ E_INTERNAL = 10500
 E_PURCHASE_STATE = 30001
 E_PURCHASE_NOT_EDITABLE = 30002
 
+# 6xxxx 系统（字典/任务日志/附件）
+E_DICT_DUPLICATE = 60001
+E_TASK_LOG_STATE = 60002
+E_ATTACHMENT_TYPE = 60003
+E_ATTACHMENT_TOO_LARGE = 60004
+E_ATTACHMENT_STORE = 60005
+
 
 class BizError(Exception):
     """业务异常：HTTP 状态码只表达协议层语义，业务结果看 code。"""
@@ -64,3 +71,38 @@ class NotEditable(BizError):
 
     def __init__(self, message: str = "单据在当前状态下不可修改") -> None:
         super().__init__(E_PURCHASE_NOT_EDITABLE, message, 409)
+
+
+class DictDuplicate(BizError):
+    """字典项 (dict_type, dict_key) 冲突。"""
+
+    def __init__(self, message: str = "字典键已存在") -> None:
+        super().__init__(E_DICT_DUPLICATE, message, 409)
+
+
+class TaskLogState(BizError):
+    """任务日志状态迁移不合法（已终态不可再改）。"""
+
+    def __init__(self, message: str = "任务日志已结束，不可再更新") -> None:
+        super().__init__(E_TASK_LOG_STATE, message, 409)
+
+
+class AttachmentTypeNotAllowed(BizError):
+    """附件类型不在允许清单内。"""
+
+    def __init__(self, message: str = "不允许的附件类型") -> None:
+        super().__init__(E_ATTACHMENT_TYPE, message, 400)
+
+
+class AttachmentTooLarge(BizError):
+    """附件超过大小上限。"""
+
+    def __init__(self, message: str = "附件超过大小上限") -> None:
+        super().__init__(E_ATTACHMENT_TOO_LARGE, message, 413)
+
+
+class AttachmentStoreError(BizError):
+    """附件落盘/读取失败。"""
+
+    def __init__(self, message: str = "附件存储失败") -> None:
+        super().__init__(E_ATTACHMENT_STORE, message, 500)

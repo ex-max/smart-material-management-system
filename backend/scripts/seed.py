@@ -8,8 +8,10 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.database import get_session_factory
+from app.core.dictionaries import DICT_SEED
 from app.core.permissions import PERMISSION_SEED, ROLE_ADMIN, ROLE_ADMIN_NAME
 from app.core.security import hash_password
+from app.model.system import Dict
 from app.model.user import Permission, Role, RolePermission, User, UserRole
 
 
@@ -54,8 +56,21 @@ def main() -> None:
             db.flush()
             db.add(UserRole(user_id=user.id, role_id=role.id))
 
+        # 数据字典预置（展示型；按 (dict_type, dict_key) 幂等，已存在不改）
+        existing_dict = {
+            (d.dict_type, d.dict_key) for d in db.execute(select(Dict)).scalars().all()
+        }
+        dict_added = 0
+        for dict_type, dict_key, dict_label, sort_no in DICT_SEED:
+            if (dict_type, dict_key) not in existing_dict:
+                db.add(Dict(dict_type=dict_type, dict_key=dict_key, dict_label=dict_label, sort_no=sort_no))
+                dict_added += 1
+
         db.commit()
-        print("seed ok: permissions=%d role=%s admin=%s" % (len(existing), ROLE_ADMIN, settings.admin_username))
+        print(
+            "seed ok: permissions=%d dict=%d(+%d) role=%s admin=%s"
+            % (len(existing), len(existing_dict) + dict_added, dict_added, ROLE_ADMIN, settings.admin_username)
+        )
     finally:
         db.close()
 

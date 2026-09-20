@@ -18,7 +18,7 @@ forgejo-db / new-api-* / 宝塔 nginx / MySQL）。运维背景与变更记录�
 - **web**：唯一对宿主暴露的入口，**仅 127.0.0.1**；提供 SPA history fallback 与 `/healthz`。
 - **api**：不对宿主暴露任何端口，只在项目网络 `erp_default` 内由 web 反代访问。
 - **db**：对宿主暴露 `127.0.0.1:5433`（沿用原有独立实例，供本地/测试直连）。
-- 卷：`erp_erp-pgdata`（独立，不与其他项目共享）；网络：`erp_default`（项目默认 bridge，隔离）。
+- 卷：`erp_erp-pgdata`（数据库，独立）、`erp_erp-attachments`（附件本体，独立）；网络：`erp_default`（项目默认 bridge，隔离）。
 
 ## 一键命令
 
@@ -80,7 +80,18 @@ docker compose exec api python -m scripts.seed        # 手动 seed（幂等）
 docker compose exec api alembic current               # 查看当前版本
 ```
 
-当前迁移版本：`0007_forecast_replenishment`。
+当前迁移版本：`0008_system_tables`。
+
+## 附件存储（§13.3）
+
+- 后端把附件本体写到容器内 `/app/data/attachments`（compose 注入 `ERP_ATTACHMENT_DIR`），
+  该路径挂独立命名卷 **`erp_erp-attachments`**，`make up` 重建 api 不丢文件；DB 的 `attachment` 表只存元数据与相对路径。
+- 大小上限：`ERP_ATTACHMENT_MAX_SIZE_MB`（默认 10）。容器 nginx 与 `/api` 的
+  `client_max_body_size` 固定 12m 兜底；两者要一起调。
+- 类型白名单：扩展名 + MIME 前缀（见 `backend/app/core/config.py`）；落盘文件名由服务端 UUID 生成，
+  绝不用客户端文件名做路径；删除是**软删元数据**，文件本体保留可审计。
+- 修改 `deploy/nginx/default.conf` 或 `backend.Dockerfile` 后需重建对应镜像：
+  `cd deploy && docker compose up -d --build api web`（`erp-postgres` 不重建）。
 
 ## 回滚
 

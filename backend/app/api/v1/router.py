@@ -11,6 +11,7 @@ from app.api.v1 import (
     purchase,
     replenishment,
     roles,
+    system,
     users,
 )
 
@@ -26,3 +27,4 @@ api_router.include_router(ledger.router)
 api_router.include_router(forecast.router)
 api_router.include_router(replenishment.router)
 api_router.include_router(operation_logs.router)
+api_router.include_router(system.router)

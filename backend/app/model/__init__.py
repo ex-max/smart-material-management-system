@@ -32,6 +32,7 @@ from app.model.purchase import (
     SupplierDeliveryItem,
 )
 from app.model.replenishment import ReplenishmentPolicy, ReplenishmentSuggestion
+from app.model.system import Attachment, Dict, ScheduledTaskLog
 from app.model.user import OperationLog, Permission, Role, RolePermission, User, UserRole
 
 __all__ = [
@@ -71,6 +72,9 @@ __all__ = [
     "InventorySnapshotDaily",
     "MaterialSupplierPrice",
     "StockAlert",
+    "Attachment",
+    "Dict",
+    "ScheduledTaskLog",
     "OperationLog",
     "Permission",
     "Role",

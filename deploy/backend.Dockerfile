@@ -24,7 +24,8 @@ COPY backend/alembic ./alembic
 COPY backend/alembic.ini ./
 COPY backend/scripts ./scripts
 COPY deploy/backend-entrypoint.sh /usr/local/bin/backend-entrypoint.sh
-RUN chmod 0755 /usr/local/bin/backend-entrypoint.sh && chown -R app:app /app
+# 附件落盘目录（挂载命名卷；先建好并归属 app，命名卷首次挂载会继承该所有权）
+RUN mkdir -p /app/data/attachments && chmod 0755 /usr/local/bin/backend-entrypoint.sh && chown -R app:app /app
 
 USER app
 EXPOSE 8000

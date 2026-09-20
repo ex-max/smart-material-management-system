@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**S3 操作日志写入/查询完成**（请求级 best-effort 审计中间件 + `GET /operation-logs` 分页过滤；`make verify` 绿且 **0 skip**，已重建 `erp-api`）。
+- **里程碑**：**S5 系统三表落地完成**（`dict` 两级 CRUD + 下拉、`scheduled_task_log` 记录/收尾/查询、`attachment` 真实上传下载；迁移 `0008_system_tables`，真 PG 可逆已验证；`make verify` 绿且 **0 skip**）。
 - **更新时间**：2026-09-20
 
 ## 已完成
@@ -47,6 +47,16 @@
 
 - [x] **S3 操作日志写入与只读查询（本会话垂直切片）**：新增 `app/core/audit.py`（请求→审计字段的脱敏提取：路径/方法/状态/耗时/操作人，**绝不**读请求体/Authorization/cookie/query string）、`app/repository|schema|service|api/v1/operation_logs.py`（`GET /operation-logs` 分页 + user_id/module/action/result/时间区间过滤）、权限码 `operation:view`（seed 排序 80）；`main.py` 在 trace 内层新增审计中间件（响应后 best-effort、独立 session、失败只记 `app.audit` 日志，绝不影响主请求；request_id=响应 trace_id）；`get_current_user` 与登录接口写 `request.state.current_user` 捕获操作人；`operation_log` 表与四个索引在 `0001` 迁移已建，本切片**无需新迁移**。新增 `tests/test_operation_log.py`（5 条：成功/失败写入、trace 关联、脱敏、分页过滤/时间区间、匿名 401/越权 403/管理员 200）；conftest 用 `configure_bind` 让审计独立 session 落同一测试库。已重建 `erp-api`（`erp-postgres`/`erp-web` 未动），实机接口正常。
 
+- [x] **S5 系统三表（docs/db-schema.md §13）落地（本会话垂直切片）**：
+  - 迁移 `0008_system_tables` 建 `dict` / `scheduled_task_log` / `attachment`（CHECK、`uq_dict_type_key` 部分唯一索引、任务日志双索引、附件 biz/sha256 索引、完整 downgrade）；ORM `app/model/system.py`。
+  - **dict**：两级语义（类型汇总 `GET /dict-types` + 项 CRUD `/dict-items`）+ 前端下拉 `GET /dicts/{dict_type}`（只返回启用项、按 sort_no）；预置 6 类展示字典（doc_status/alert_type/alert_level/abc_class/demand_class/priority，`app/core/dictionaries.py`，`scripts/seed.py` 幂等插入）。
+  - **scheduled_task_log**：**只建表 + 记录接口，不引入调度器**；`POST /scheduled-task-logs`（追加 RUNNING/终态）、`POST /{id}/finish`（RUNNING→终态，自动算 duration_ms，终态再改 409）、`GET` 列表/详情（task_name/type/status/时间过滤）。
+  - **attachment**：真实 multipart 上传/下载（`POST /attachments`、`GET /{id}/download`、列表/详情/软删）；扩展名 + MIME 白名单、大小上限（默认 10MB）、UUID 落盘名（不信任客户端文件名）、sha256、路径越界校验；本地存储根可配 `ERP_ATTACHMENT_DIR`。
+  - 权限码 `dict:view/manage`、`task:view/manage`、`attachment:view/manage`（seed 90–95，ADMIN 自动授予）；错误码 6xxxx 段；审计 module 映射补齐 system。
+  - 分层齐备：`schema/repository/service/api`（`app/**/system.py`）；统一响应 `{code,message,data,trace_id}`。
+  - 测试 `tests/test_system_tables.py`（9 条：正常/边界/权限拒绝）；SQLite + 真 PG 双跑 9 passed。
+  - 部署：`backend.Dockerfile` 建可写附件目录 + compose 新命名卷 `erp_erp-attachments`（挂 `/app/data/attachments`）+ 容器 nginx `client_max_body_size 12m`；`deploy/README.md`、`backend/.env.example`、`deploy/.env.example` 同步。
+
 ## 进行中
 
 - [ ] 无
@@ -55,7 +65,7 @@
 
 **前端「操作日志」页面**：后端 `GET /operation-logs` 已就绪（分页 + user_id/module/action/result/时间区间过滤，权限码 `operation:view`）；新增 Vue 页面（列表/筛选/分页），重跑 `npm run gen:api` 同步 `src/api/schema.d.ts`，并按 `operation:view` 控制菜单可见性。
 
-> operation_log 后端写入/查询已于本会话完成；S2 的后续可选项（预测区间落库、决策页列表展示模型名/批次）见「已知坑」，均非阻塞。
+> S5 已新增系统三表后端接口（`/dict-types`、`/dict-items`、`/dicts/{type}`、`/scheduled-task-logs`、`/attachments`），**前端未做**（本会话后端优先）；`gen:api` 需在下一个前端切片一并重跑。S2/S5 的可选项见「已知坑」，均非阻塞。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -137,6 +147,15 @@
 | S3 测试库接线 | conftest 新增 `configure_bind(engine, factory)`，使审计中间件的独立 session 落到同一测试库（SQLite StaticPool） | S3 记录 |
 | S3 全套测试变慢 | 每个请求多一次日志 INSERT，后端 pytest 全套约 2.5min（原约 1min）；属预期 | S3 记录 |
 | S3 迁移 | `operation_log` 表与 `created_at/user_id/action/request_id` 四索引在 `0001` 迁移已建，本切片无新迁移 | S3 记录 |
+| S5 三表口径 | 三张表**全做**（后端优先）：dict 两级 CRUD + 下拉、scheduled_task_log 只建表+记录接口、attachment 真实上传下载；前端页面留后续切片 | S5 记录（采纳推荐） |
+| S5 调度器 | **未引入** APScheduler/Celery（AGENTS：能不加依赖就不加）。`scheduled_task_log` 只提供记录/收尾/查询接口，供 shell+cron 或后台任务上报；真正调度属后续可选 | S5 记录 |
+| S5 附件存储 | 文件本体落本地目录（容器内 `/app/data/attachments`，命名卷 `erp_erp-attachments`；本地默认 `data/attachments`，已被 `.gitignore` 的 `data/` 覆盖）；DB 只存元数据。**删除为软删元数据、文件本体保留**（可审计、可恢复），磁盘增长需人工清理 | S5 记录 |
+| S5 附件安全 | 扩展名 + MIME 前缀双白名单、大小上限 `ERP_ATTACHMENT_MAX_SIZE_MB`（默认 10）、流式落盘超限即回滚半截文件、落盘名 UUID（绝不用客户端文件名做路径）、下载做路径越界校验、sha256 校验和 | S5 记录 |
+| S5 新依赖 | 新增 `python-multipart`（FastAPI 处理 `multipart/form-data` 上传的官方必需件；不引入则 `UploadFile/Form` 路由无法注册）。无其他新依赖 | S5 记录 |
+| S5 dict 边界 | `dict` 只放**展示型/可运营**字典；业务枚举仍以代码常量 + 列 CHECK 为单一事实源（§13.1）。预置 key 全部来自既有代码常量，`scripts/seed.py` **insert-only**（已存在不改，避免覆盖用户运营修改） | S5 记录 |
+| S5 上传的 nginx 限制 | 容器内 `deploy/nginx/default.conf` 已加 `client_max_body_size 12m`（重建 `erp-web` 生效）；**宿主 nginx 站点 `gra.sukicloud.top.conf` 未改**（server-ops 硬边界只允许改 dsh*.conf），经公网上传大文件可能仍受宿主默认 `client_max_body_size 1m` 限制，需要时再单独申请改站点 | S5 记录（待确认） |
+| S5 附件与业务单据关联 | `biz_type/biz_id` 仅存元数据、**不做外键**（跨模块松耦合，§13.3）；未做"单据存在性"校验。前端上传入口与单据详情附件区留后续 | S5 记录 |
+| S5 前端类型未同步 | 本切片未动前端，故未重跑 `npm run gen:api`；`frontend/src/api/schema.d.ts` 暂无 `DictItemOut/ScheduledTaskLogOut/AttachmentOut`，前端切片时一并重跑 | 待后续切片 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -161,3 +180,4 @@
 | 2026-09-19 | M8 演示数据：通过 API 生成采购入库/出库/调拨/盘点，结存全部由 `stock_ledger` 流水推导；`GET /inventory/reconcile` 四条差异均为 0 | `reconcile.ok=true`；库存结存 10 行、流水 17 条；未直接改库结存 |
 | 2026-09-20 | S2 预测接入：同步脚本只读业务主数据（`material`/`warehouse`）生成需求，只写 `forecast_*` 与 `replenishment_*`；决策服务只读 `inventory`（结存/锁定）与在途汇总，不写 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；`reconcile` 口径不变；同步前后库存表零写入 |
 | 2026-09-20 | S3 操作日志：审计中间件只读取请求元数据（路径/方法/状态/耗时/操作人）并只写 `operation_log`；不读请求体、不触碰 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；`reconcile` 口径不变 |
+| 2026-09-20 | S5 系统三表：只新增 `dict`/`scheduled_task_log`/`attachment` 三表与接口，不改任何库存/采购/预测表；附件只写本地磁盘 + 自身元数据 | 不涉及结存变更；`reconcile` 口径不变；真 PG 迁移 upgrade→downgrade -1→upgrade 可逆 |

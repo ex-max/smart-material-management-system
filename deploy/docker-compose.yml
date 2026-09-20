@@ -44,7 +44,12 @@ services:
       ERP_CORS_ORIGINS: ${ERP_CORS_ORIGINS:-http://127.0.0.1:8080,http://localhost:8080}
       ERP_ADMIN_USERNAME: ${ERP_ADMIN_USERNAME:-admin}
       ERP_ADMIN_PASSWORD: ${ERP_ADMIN_PASSWORD:-admin123}
+      ERP_ATTACHMENT_DIR: /app/data/attachments
+      ERP_ATTACHMENT_MAX_SIZE_MB: ${ERP_ATTACHMENT_MAX_SIZE_MB:-10}
       TZ: UTC
+    volumes:
+      # 附件本体（§13.3）落独立命名卷，容器重建不丢；DB 只存元数据
+      - erp-attachments:/app/data/attachments
     depends_on:
       db:
         condition: service_healthy
@@ -79,3 +84,4 @@ services:
 
 volumes:
   erp-pgdata:
+  erp-attachments:

@@ -41,6 +41,11 @@ _MODULE_PREFIXES: tuple[tuple[str, str], ...] = (
     ("/api/v1/users", "user"),
     ("/api/v1/roles", "role"),
     ("/api/v1/operation-logs", "system"),
+    ("/api/v1/dict-types", "system"),
+    ("/api/v1/dict-items", "system"),
+    ("/api/v1/dicts", "system"),
+    ("/api/v1/scheduled-task-logs", "system"),
+    ("/api/v1/attachments", "system"),
 )
 
 # 与 §10.6 列宽对齐

@@ -296,5 +296,26 @@ DELETE FROM model_registry;
   - 部署验证（仅重建 `erp-api`）：`server-health.sh -q` 前后均 **47/0/0 PASS**；`erp-api` healthy；实机 `GET /operation-logs` 返回登录审计（admin/auth/login/SUCCESS），`GET /forecast-runs/999999` 落 FAIL（10404）；`operation:view` 已 seed 并授予 ADMIN。
 - **回滚**：`git revert <本次提交>`（新增文件 + 少量接线，无迁移）。运行时镜像回滚见 `/root/dsh/CHANGELOG-ops.md`（`erp-api:rollback-20260920-s3`）。`operation_log` 为追加写，本切片只插入；如需清空 `DELETE FROM operation_log;`（审计数据，无业务副作用）。
 - **备注**：审计中间件是**请求级通用**记录，`detail` 只放 FAIL 的 HTTP 状态码，不含业务参数（避免读 body 带来的泄漏与性能开销）；如需业务级 detail（单据号/变更前后），后续在 service 层按需补写。前端「操作日志」页面与 `npm run gen:api` 留后续切片。**服务器改动已记 `/root/dsh/CHANGELOG-ops.md`**。
+## 2026-09-20 · 系统三表：dict / scheduled_task_log / attachment（S5）
+
+- **改动**：
+  - 迁移 `0008_system_tables`（`Revises 0007_forecast_replenishment`，含完整 `downgrade`）：`dict`（`uq_dict_type_key` 部分唯一索引 + `ix_dict_type`）、`scheduled_task_log`（status CHECK、`ix_stl_task_name_started_at`、`ix_stl_status`）、`attachment`（`file_size>=0`、`storage IN (...)` CHECK、`ix_attachment_biz`、`ix_attachment_sha256`）；ORM 落 `backend/app/model/system.py` 并导出到 `app.model`。
+  - **dict**：`schema/repository/service/api` 分层（`app/**/system.py`）。两级语义：类型汇总 `GET /dict-types` + 字典项 CRUD `/dict-items`（列表 keyword/is_active/dict_type 过滤、创建、详情、更新、软删）；前端下拉 `GET /dicts/{dict_type}`（只返回启用项、按 `sort_no`）。预置 6 类展示字典 `app/core/dictionaries.py`（doc_status/alert_type/alert_level/abc_class/demand_class/priority），`scripts/seed.py` 按 `(dict_type, dict_key)` **insert-only 幂等**插入。
+  - **scheduled_task_log**：**不引入调度器**（APScheduler/Celery）。`POST /scheduled-task-logs`（追加 RUNNING 或直接终态）、`POST /scheduled-task-logs/{id}/finish`（RUNNING→终态，自动算 `duration_ms`；已终态 409）、`GET` 列表/详情（task_name/type/status/时间区间过滤）。
+  - **attachment**：真实 multipart 上传下载。`POST /attachments`（`UploadFile` + `biz_type/biz_id`）、`GET /attachments/{id}/download`（`FileResponse`）、列表/详情/软删。扩展名 + MIME 前缀双白名单、大小上限、流式 sha256、UUID 落盘名、路径越界校验；存储根 `ERP_ATTACHMENT_DIR`。
+  - 权限码：`dict:view/manage`（90/91）、`task:view/manage`（92/93）、`attachment:view/manage`（94/95），ADMIN 自动授予；错误码 6xxxx 段（`E_DICT_DUPLICATE` 等）；审计 `module_for_path` 补 system 前缀。
+  - 配置：`app/core/config.py` 新增 `attachment_dir/max_size_mb/allowed_ext/allowed_types`；`app/core/audit.py` 补映射。
+  - 部署：`deploy/backend.Dockerfile` 预建可写 `/app/data/attachments`（属 app 用户）；`deploy/docker-compose.yml` 新增命名卷 `erp-attachments`（挂 `/app/data/attachments`）与 `ERP_ATTACHMENT_DIR/MAX_SIZE_MB`；容器 nginx `client_max_body_size 12m`；`deploy/README.md`、`backend/.env.example`、`deploy/.env.example` 同步。
+  - 新增 `backend/tests/test_system_tables.py`（9 条：正常/边界/权限拒绝 + 预置字典口径）。
+- **原因**：`docs/progress.md` 的 S5 目标 —— `docs/db-schema.md` §13 三张系统表此前只有设计、代码/迁移均未落地（最新为 0007）。
+- **口径（开会三问的推荐方案）**：(a) 三表**全做**，后端优先、前端留后续；(b) dict 做两级 + 下拉，预置单据状态/预警类型/ABC 等展示字典；(c) `scheduled_task_log` 只建表 + 记录接口，**不引入调度器**；(d) attachment 做**真实上传下载**（本地目录 + 项目卷），限制大小/类型。
+- **依赖**：新增 `python-multipart`（FastAPI 处理 multipart 表单的必需件，否则 `UploadFile/Form` 路由无法注册）；无其他新依赖。
+- **验证**：
+  - `make verify` 绿且 **0 skip**：后端 ruff、**pytest 82 passed**（原 73 + 新 9）、ml、前端 lint、迁移链可解析、不变量通过。
+  - 真 PostgreSQL：在 scratch 库 `erp_migcheck` 上验证 `upgrade head → downgrade -1 → upgrade head` 可逆，三表与全部索引就位；新测试单测对 PG 复跑 **9 passed**。
+  - 部署（重建 `erp-api`/`erp-web`，`erp-postgres` 未动）：`server-health.sh -q` 前后均 **47/0/0 PASS**；`/api/v1/dict-types` 等接口可用，入口自动迁移到 0008 并幂等 seed 新权限与预置字典；`erp-api` healthy。
+- **回滚**：`git revert <本次提交>`；镜像回滚见 `/root/dsh/CHANGELOG-ops.md`（`erp-api:rollback-20260920-s5` / `erp-web:rollback-20260920-s5`）；数据库回滚 `alembic downgrade 0007_forecast_replenishment`（会丢三张系统表数据，均为新表）。
+- **备注**：dict 只承载展示标签（业务枚举仍以代码常量 + CHECK 为单一事实源）；附件删除为**软删元数据、文件保留**，磁盘需人工清理；`biz_type/biz_id` 不做外键（跨模块松耦合）。**服务器改动已记 `/root/dsh/CHANGELOG-ops.md`**。
+
 
 

@@ -24,6 +24,12 @@ class Perm:
     REPLENISHMENT_MANAGE = "replenishment:manage"
     REPLENISHMENT_CONVERT = "replenishment:convert"
     OPERATION_VIEW = "operation:view"
+    DICT_VIEW = "dict:view"
+    DICT_MANAGE = "dict:manage"
+    TASK_VIEW = "task:view"
+    TASK_MANAGE = "task:manage"
+    ATTACHMENT_VIEW = "attachment:view"
+    ATTACHMENT_MANAGE = "attachment:manage"
 
 
 # (code, name, type, sort_no)
@@ -47,6 +53,12 @@ PERMISSION_SEED: list[tuple[str, str, str, int]] = [
     (Perm.REPLENISHMENT_MANAGE, "管理补货建议", "API", 71),
     (Perm.REPLENISHMENT_CONVERT, "补货建议转请购单", "API", 72),
     (Perm.OPERATION_VIEW, "查看操作日志", "API", 80),
+    (Perm.DICT_VIEW, "查看数据字典", "API", 90),
+    (Perm.DICT_MANAGE, "管理数据字典", "API", 91),
+    (Perm.TASK_VIEW, "查看任务日志", "API", 92),
+    (Perm.TASK_MANAGE, "记录任务日志", "API", 93),
+    (Perm.ATTACHMENT_VIEW, "查看附件", "API", 94),
+    (Perm.ATTACHMENT_MANAGE, "上传/删除附件", "API", 95),
 ]
 
 ROLE_ADMIN = "ADMIN"
