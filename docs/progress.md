@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**S5 系统三表落地完成**（`dict` 两级 CRUD + 下拉、`scheduled_task_log` 记录/收尾/查询、`attachment` 真实上传下载；迁移 `0008_system_tables`，真 PG 可逆已验证；`make verify` 绿且 **0 skip**）。
+- **里程碑**：**S6 概览 Dashboard 完成**（占位 `HomeView.vue` 替换为真实可视化概览：6 统计卡片 + 4 图表 + 无依赖 CSV 导出，纯前端聚合、403 静默降级；新增唯一依赖 `echarts`；`make verify` 绿且 **0 skip**）。
 - **更新时间**：2026-09-20
 
 ## 已完成
@@ -57,6 +57,8 @@
   - 测试 `tests/test_system_tables.py`（9 条：正常/边界/权限拒绝）；SQLite + 真 PG 双跑 9 passed。
   - 部署：`backend.Dockerfile` 建可写附件目录 + compose 新命名卷 `erp_erp-attachments`（挂 `/app/data/attachments`）+ 容器 nginx `client_max_body_size 12m`；`deploy/README.md`、`backend/.env.example`、`deploy/.env.example` 同步。
 
+- [x] **S6 概览 Dashboard（本会话前端垂直切片）**：新增依赖 `echarts`（^6.1.0，本切片唯一新增；未引入 vue-echarts/xlsx）；替换占位 `HomeView.vue` 为真实概览：**6 张统计卡片**（物资数/仓库数/库存结存行+总量/待审单据/低库存预警/待确认补货建议）+ **4 张图**（单据状态分布、库存 Top10 物资、近期出入库趋势、预警类型分布），数据用现有接口**纯前端聚合**；新增 `frontend/src/api/dashboard.ts`（现有 list 接口 page_size=200 只读封装）、`frontend/src/composables/useDashboard.ts`（聚合 + 图表 option + CSV 行）、`frontend/src/components/EChart.vue`（echarts 按需注册）、`frontend/src/utils/csv.ts`（Blob + UTF-8 BOM，无依赖 CSV）；`frontend/src/api/http.ts` 新增 `ApiCallOptions.silent`，无权限接口 403 **不弹全局错误、降级为空数据且不阻塞其它卡片**。**未新增后端接口、未改数据库/路由**。
+
 ## 进行中
 
 - [ ] 无
@@ -65,7 +67,9 @@
 
 **前端「操作日志」页面**：后端 `GET /operation-logs` 已就绪（分页 + user_id/module/action/result/时间区间过滤，权限码 `operation:view`）；新增 Vue 页面（列表/筛选/分页），重跑 `npm run gen:api` 同步 `src/api/schema.d.ts`，并按 `operation:view` 控制菜单可见性。
 
-> S5 已新增系统三表后端接口（`/dict-types`、`/dict-items`、`/dicts/{type}`、`/scheduled-task-logs`、`/attachments`），**前端未做**（本会话后端优先）；`gen:api` 需在下一个前端切片一并重跑。S2/S5 的可选项见「已知坑」，均非阻塞。
+> S5 已新增系统三表后端接口（`/dict-types`、`/dict-items`、`/dicts/{type}`、`/scheduled-task-logs`、`/attachments`），**前端未做**；`gen:api` 需在下一个前端切片一并重跑。S2/S5 的可选项见「已知坑」，均非阻塞。
+>
+> S6 概览 Dashboard 已完成（本会话前端切片，仅新增 `echarts`，**未动后端**）；前端仍待补「操作日志」页与 S5 系统三表页。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -156,6 +160,11 @@
 | S5 上传的 nginx 限制 | 容器内 `deploy/nginx/default.conf` 已加 `client_max_body_size 12m`（重建 `erp-web` 生效）；**宿主 nginx 站点 `gra.sukicloud.top.conf` 未改**（server-ops 硬边界只允许改 dsh*.conf），经公网上传大文件可能仍受宿主默认 `client_max_body_size 1m` 限制，需要时再单独申请改站点 | S5 记录（待确认） |
 | S5 附件与业务单据关联 | `biz_type/biz_id` 仅存元数据、**不做外键**（跨模块松耦合，§13.3）；未做"单据存在性"校验。前端上传入口与单据详情附件区留后续 | S5 记录 |
 | S5 前端类型未同步 | 本切片未动前端，故未重跑 `npm run gen:api`；`frontend/src/api/schema.d.ts` 暂无 `DictItemOut/ScheduledTaskLogOut/AttachmentOut`，前端切片时一并重跑 | 待后续切片 |
+| S6 概览图表口径 | 概览页图表为**纯前端聚合**：各 list 接口无聚合参数且 `page_size` 上限 200，超限只统计前 200 行并在卡片标注（「前 200 行/前 200 条」）；未新增后端聚合接口（跨模块，避免越界） | S6 记录 |
+| S6 新依赖 | 新增 `echarts`（^6.1.0）用于概览图表；**未引入 vue-echarts**（用轻量 `EChart.vue` 按需注册）也**未引入 xlsx**（导出用 Blob CSV）。`HomeView` chunk 约 564KB（gzip 194KB），`vite build` 有 >500KB 警告但项目本来即存在（ElementPlus index chunk 1MB） | S6 记录 |
+| S6 权限降级 | 概览对所有登录用户可见；`http.ts` 新增 `ApiCallOptions.silent`，无权限接口 403 **不弹全局错误**，单接口失败降级为空数据、不阻塞其它卡片（对齐 `ReplenishmentView.loadMasters` 的 catch 思路） | S6 记录 |
+| S6 CSV 导出 | 导出为浏览器 Blob 生成的 CSV（带 UTF-8 BOM 便于 Excel 识别），**非 .xlsx**；如确需 xlsx 再单独确认引入依赖 | S6 记录 |
+| S6 后端未动 | 本切片未新增/改后端接口，故**未重跑 `gen:api`**（`schema.d.ts` 不变）；`OperationLogOut`/系统三表类型仍缺，待对应前端切片一并重跑 | S6 记录 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -181,3 +190,4 @@
 | 2026-09-20 | S2 预测接入：同步脚本只读业务主数据（`material`/`warehouse`）生成需求，只写 `forecast_*` 与 `replenishment_*`；决策服务只读 `inventory`（结存/锁定）与在途汇总，不写 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；`reconcile` 口径不变；同步前后库存表零写入 |
 | 2026-09-20 | S3 操作日志：审计中间件只读取请求元数据（路径/方法/状态/耗时/操作人）并只写 `operation_log`；不读请求体、不触碰 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；`reconcile` 口径不变 |
 | 2026-09-20 | S5 系统三表：只新增 `dict`/`scheduled_task_log`/`attachment` 三表与接口，不改任何库存/采购/预测表；附件只写本地磁盘 + 自身元数据 | 不涉及结存变更；`reconcile` 口径不变；真 PG 迁移 upgrade→downgrade -1→upgrade 可逆 |
+| 2026-09-20 | S6 概览 Dashboard：仅通过 `materials`/`warehouses`/`inventory`/`inventory/transactions`/`stock-alerts`/采购与库存各 list/`replenishment-suggestions` **只读**接口拉取并在浏览器聚合；未新增后端接口、不写任何表 | 不涉及结存变更；`reconcile` 口径不变；前端只读 API |

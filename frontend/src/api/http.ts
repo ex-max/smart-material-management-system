@@ -11,6 +11,17 @@ export interface ApiEnvelope<T> {
   trace_id: string
 }
 
+/** 单次请求选项：silent=true 时拦截器不弹全局错误提示（用于概览页对 403 静默降级）。 */
+export interface ApiCallOptions {
+  silent?: boolean
+}
+
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    silent?: boolean
+  }
+}
+
 const http = axios.create({
   baseURL: import.meta.env.VITE_API_BASE || '/api/v1',
   timeout: 20000,
@@ -33,7 +44,7 @@ http.interceptors.response.use(
     if (status === 401) {
       useAuth().logout()
       void router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
-    } else {
+    } else if (!error.config?.silent) {
       ElMessage.error(message)
     }
     return Promise.reject(new Error(message))
@@ -51,10 +62,13 @@ async function unwrap<T>(promise: Promise<AxiosResponse<ApiEnvelope<T>>>): Promi
 }
 
 export const api = {
-  get: <T>(url: string, params?: Record<string, unknown>) => unwrap<T>(http.get(url, { params })),
-  post: <T>(url: string, data?: unknown) => unwrap<T>(http.post(url, data)),
-  put: <T>(url: string, data?: unknown) => unwrap<T>(http.put(url, data)),
-  delete: <T>(url: string) => unwrap<T>(http.delete(url)),
+  get: <T>(url: string, params?: Record<string, unknown>, options?: ApiCallOptions) =>
+    unwrap<T>(http.get(url, { params, ...options })),
+  post: <T>(url: string, data?: unknown, options?: ApiCallOptions) =>
+    unwrap<T>(http.post(url, data, options)),
+  put: <T>(url: string, data?: unknown, options?: ApiCallOptions) =>
+    unwrap<T>(http.put(url, data, options)),
+  delete: <T>(url: string, options?: ApiCallOptions) => unwrap<T>(http.delete(url, options)),
 }
 
 export default http

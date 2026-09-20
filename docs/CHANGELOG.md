@@ -316,6 +316,22 @@ DELETE FROM model_registry;
   - 部署（重建 `erp-api`/`erp-web`，`erp-postgres` 未动）：`server-health.sh -q` 前后均 **47/0/0 PASS**；`/api/v1/dict-types` 等接口可用，入口自动迁移到 0008 并幂等 seed 新权限与预置字典；`erp-api` healthy。
 - **回滚**：`git revert <本次提交>`；镜像回滚见 `/root/dsh/CHANGELOG-ops.md`（`erp-api:rollback-20260920-s5` / `erp-web:rollback-20260920-s5`）；数据库回滚 `alembic downgrade 0007_forecast_replenishment`（会丢三张系统表数据，均为新表）。
 - **备注**：dict 只承载展示标签（业务枚举仍以代码常量 + CHECK 为单一事实源）；附件删除为**软删元数据、文件保留**，磁盘需人工清理；`biz_type/biz_id` 不做外键（跨模块松耦合）。**服务器改动已记 `/root/dsh/CHANGELOG-ops.md`**。
+## 2026-09-20 · 概览 Dashboard（S6，前端垂直切片）
+
+- **改动**：
+  - 新增依赖 `echarts`（^6.1.0，本会话**唯一新增依赖**）。新增 `frontend/src/components/EChart.vue`：用 `echarts/core` 按需注册 Bar/Line/Pie + Grid/Legend/Tooltip + CanvasRenderer，复用同一实例 `setOption`、监听 `resize`、卸载 `dispose`。
+  - 重写 `frontend/src/views/HomeView.vue`：**6 张统计卡片**（物资数 / 仓库数 / 库存结存行+总量 / 待审单据 / 低库存预警 / 待确认补货建议）+ **4 张图**（单据状态分布、库存 Top10 物资、近期出入库趋势、预警类型分布），全部**纯前端聚合**；含刷新、加载态与空态兜底。
+  - 新增 `frontend/src/composables/useDashboard.ts`（并发拉取 + 聚合 + ECharts option + CSV 行构造）、`frontend/src/api/dashboard.ts`（现有 list 接口只读封装，page_size=200、silent）、`frontend/src/utils/csv.ts`（Blob + UTF-8 BOM，无依赖 CSV 导出）。
+  - `frontend/src/api/http.ts` 新增 `ApiCallOptions.silent` 与 axios 模块增强：`silent=true` 时拦截器不弹全局错误；默认行为不变，既有调用方不受影响。
+  - **未新增后端接口、未改数据库、未改路由**（页面仍在 `/home`）。
+- **原因**：本会话目标 S6 —— `HomeView.vue` 此前仅为 `el-empty` 占位，毕业设计需要可答辩的可视化概览页。
+- **依赖**：新增 `echarts`。原因：概览页需要图表（柱/折线/饼）；echarts 对 Vue3 支持成熟、按需注册可控体积。**未引入 vue-echarts**（用自研轻量 `EChart.vue`，少一个依赖）；**未引入 xlsx**（导出用浏览器 Blob 生成 CSV）。
+- **验证**：
+  - 前端 `npm run lint`、`npm run typecheck`、`npm run build` 全部通过。
+  - `make verify` **绿且 0 skip**：后端 ruff + **pytest 82 passed**、ml ruff + **ml pytest 67 passed**、前端 lint 通过、迁移链 1590 行可解析、领域不变量通过。
+  - 部署（重建 `erp-web`；compose 依赖也重建了 `erp-api`，`erp-postgres` 未动）：`server-health.sh -q` 改动前后均 **47/0/0 PASS**；`http://127.0.0.1:8080` 与经 `--resolve gra.sukicloud.top:443:127.0.0.1` 的 `/`、`/home` 均 **200**，新 `HomeView` chunk 含 dashboard 标记。
+- **回滚**：`git revert <本次提交>`（前端源码 + `package.json`/`package-lock.json`，无迁移、无后端、无数据副作用）；运行时镜像回滚见 `/root/dsh/CHANGELOG-ops.md`（`erp-web:rollback-20260920-s6`）。
+- **备注**：各 list 接口无聚合参数、page_size 上限 200，故概览每类最多取前 200 行后在浏览器聚合，卡片对超限标注「前 200 行/条」；S2 补货建议为空时卡片显示 0、图表显示「暂无数据」，不报错。**服务器改动已记 `/root/dsh/CHANGELOG-ops.md`**。
 
 
 
