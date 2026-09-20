@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**S2 预测接入补货决策完成**（ML 分层预测经 API 落 `forecast_*` 六表 + 3 条可解释补货建议；`make verify` 绿且 **0 skip**）。
+- **里程碑**：**S3 操作日志写入/查询完成**（请求级 best-effort 审计中间件 + `GET /operation-logs` 分页过滤；`make verify` 绿且 **0 skip**，已重建 `erp-api`）。
 - **更新时间**：2026-09-20
 
 ## 已完成
@@ -45,15 +45,17 @@
 
 - [x] **S2 预测结果接入后端 forecast_* 与补货决策（本会话垂直切片）**：新增 `ml/erp_ml/sync_forecast.py` + `make sync-forecast`（复用 `ml/.venv` 与 M3–M7 代码，仅标准库 HTTP）。以 `catalog_source="db"` **只读**业务主数据，为 26 物资 × 3 仓库生成 3 年日需求（seed=14），按 M4 分层映射（SMOOTH/ERRATIC→LightGBM、INTERMITTENT/LUMPY→Croston）输出未来 14 天预测；经后端 API 落库：**模型注册 2 / 预测批次 1（`FR-20260920-0001`，78 序列 × 14 步 = 1092 条结果，SUCCESS）/ 需求序列元数据 78 / 补货策略 1 / 补货建议 3（OPEN）**。重复执行幂等（批次数不变：新增 0、更新 3）；建议可解释（D̂/σD/SS/ROP/参数来源，`reason` 含 `model=lightgbm_demand`）；前端「补货决策」页直接展示，未改前端。新增 `ml/tests/test_sync_forecast.py`（6 条）与后端决策测试 2 条（最新 SUCCESS 批次生效 / RUNNING 批次忽略）。
 
+- [x] **S3 操作日志写入与只读查询（本会话垂直切片）**：新增 `app/core/audit.py`（请求→审计字段的脱敏提取：路径/方法/状态/耗时/操作人，**绝不**读请求体/Authorization/cookie/query string）、`app/repository|schema|service|api/v1/operation_logs.py`（`GET /operation-logs` 分页 + user_id/module/action/result/时间区间过滤）、权限码 `operation:view`（seed 排序 80）；`main.py` 在 trace 内层新增审计中间件（响应后 best-effort、独立 session、失败只记 `app.audit` 日志，绝不影响主请求；request_id=响应 trace_id）；`get_current_user` 与登录接口写 `request.state.current_user` 捕获操作人；`operation_log` 表与四个索引在 `0001` 迁移已建，本切片**无需新迁移**。新增 `tests/test_operation_log.py`（5 条：成功/失败写入、trace 关联、脱敏、分页过滤/时间区间、匿名 401/越权 403/管理员 200）；conftest 用 `configure_bind` 让审计独立 session 落同一测试库。已重建 `erp-api`（`erp-postgres`/`erp-web` 未动），实机接口正常。
+
 ## 进行中
 
 - [ ] 无
 
 ## 下一步（只做这一条）
 
-**operation_log 写入逻辑**：表已建但未落库；按 `docs/db-schema.md` §10.6（追加写、不更新）实现请求级日志中间件或 service 钩子（记录 user/trace_id/path/method/result/duration/resource），并提供只读查询接口；注意不要记录密码/token。
+**前端「操作日志」页面**：后端 `GET /operation-logs` 已就绪（分页 + user_id/module/action/result/时间区间过滤，权限码 `operation:view`）；新增 Vue 页面（列表/筛选/分页），重跑 `npm run gen:api` 同步 `src/api/schema.d.ts`，并按 `operation:view` 控制菜单可见性。
 
-> S2 的后续可选项（预测区间落库、决策页列表展示模型名/批次、固定策略 override）见「已知坑」，均非阻塞。
+> operation_log 后端写入/查询已于本会话完成；S2 的后续可选项（预测区间落库、决策页列表展示模型名/批次）见「已知坑」，均非阻塞。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -125,6 +127,16 @@
 | S2 策略 override 未生效 | 后端决策服务始终按预测公式算 SS/ROP，未读取 `safety_stock_override`/`rop_override`（`strategy=FIXED` 同此）；本次 `strategy=FORECAST` 不受影响 | 既有（M6） |
 | S2 运行前置 | `make sync-forecast` 需后端已起（默认 8000；部署栈 `BASE=http://127.0.0.1:8080`）且 `127.0.0.1:5433` 业务库可读（只读 `material`/`warehouse`） | S2 记录 |
 | S2 建议覆盖范围 | 决策服务只遍历 `inventory` 行（当前 10 个物资×仓组合），无结存物资不生成建议；要覆盖更多须先经业务单据入库（预测脚本绝不写业务表） | S2 记录 |
+| S3 写入方式 | 请求级 `@app.middleware("http")` 在响应后落库；独立 session（不跨请求复用）；任何异常只记 `app.audit` 日志，绝不影响主请求 | S3 记录 |
+| S3 request_id | 审计中间件挂在 trace 中间件**内层**，`request_id` 直接取 `trace_id_var`，与响应 `X-Trace-Id`/`trace_id` 一致 | S3 记录 |
+| S3 脱敏口径 | 不读请求体/Authorization/cookie/query string；`detail` 仅 FAIL 时记 `status_code`；路径只存 `url.path`（无查询串） | S3 记录 |
+| S3 跳过路径 | `/api/health`、`/api/docs`、`/api/redoc`、`/api/openapi.json` 与 `OPTIONS` 预检不落库，避免噪声 | S3 记录 |
+| S3 action 口径 | `action` 取路由名（如 `login`/`get_forecast_run`/`list_material`），`module` 由路径前缀最长匹配；非语义化但可检索，够审计用 | S3 记录 |
+| S3 权限/seed | 新增 `operation:view`（`PERMISSION_SEED` 排序 80）；`scripts/seed.py` 幂等补齐并授予 ADMIN。已存在的部署需重启 `erp-api`（入口自动 seed）或手动 `make seed` | S3 记录 |
+| S3 前端类型未同步 | 本切片未动前端，故未重跑 `npm run gen:api`，`frontend/src/api/schema.d.ts` 暂无 `OperationLogOut`；前端页面切片时一并重跑 | 待后续切片 |
+| S3 测试库接线 | conftest 新增 `configure_bind(engine, factory)`，使审计中间件的独立 session 落到同一测试库（SQLite StaticPool） | S3 记录 |
+| S3 全套测试变慢 | 每个请求多一次日志 INSERT，后端 pytest 全套约 2.5min（原约 1min）；属预期 | S3 记录 |
+| S3 迁移 | `operation_log` 表与 `created_at/user_id/action/request_id` 四索引在 `0001` 迁移已建，本切片无新迁移 | S3 记录 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -148,3 +160,4 @@
 | 2026-09-19 | M8 采购/库存前端：仅通过 `purchase-requisitions`/`purchase-orders`/`supplier-deliveries`/`inbound-orders`/`outbound-orders`/`transfer-orders`/`stocktake-orders`/`inventory*`/`stock-alerts` API 操作；过账/红冲调用后端 service（`stock_ledger` 唯一结存入口），前端不直连库、不改结存；库存查询页提供一键 `GET /inventory/reconcile` | 不涉及结存变更；后端 66 passed，`make verify` 绿 |
 | 2026-09-19 | M8 演示数据：通过 API 生成采购入库/出库/调拨/盘点，结存全部由 `stock_ledger` 流水推导；`GET /inventory/reconcile` 四条差异均为 0 | `reconcile.ok=true`；库存结存 10 行、流水 17 条；未直接改库结存 |
 | 2026-09-20 | S2 预测接入：同步脚本只读业务主数据（`material`/`warehouse`）生成需求，只写 `forecast_*` 与 `replenishment_*`；决策服务只读 `inventory`（结存/锁定）与在途汇总，不写 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；`reconcile` 口径不变；同步前后库存表零写入 |
+| 2026-09-20 | S3 操作日志：审计中间件只读取请求元数据（路径/方法/状态/耗时/操作人）并只写 `operation_log`；不读请求体、不触碰 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；`reconcile` 口径不变 |

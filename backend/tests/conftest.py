@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.core.database import Base, get_db
+from app.core.database import Base, configure_bind, get_db, reset_engine
 from app.core.permissions import Perm
 from app.core.security import hash_password
 from app.main import app as fastapi_app
@@ -30,6 +30,8 @@ def db_session():
         )
         Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    # 审计中间件用独立 session 落库：绑定到同一测试库，测试方可断言日志
+    configure_bind(engine, factory)
     session = factory()
     try:
         yield session
@@ -37,6 +39,7 @@ def db_session():
         session.close()
         Base.metadata.drop_all(engine)
         engine.dispose()
+        reset_engine()
 
 
 @pytest.fixture()

@@ -28,6 +28,15 @@ def get_session_factory():
     return _session_factory
 
 
+def configure_bind(engine, session_factory=None) -> None:
+    """显式绑定引擎/会话工厂（测试与后台旁路任务使用）。"""
+    global _engine, _session_factory
+    _engine = engine
+    _session_factory = session_factory or sessionmaker(
+        bind=engine, autoflush=False, expire_on_commit=False
+    )
+
+
 def reset_engine() -> None:
     global _engine, _session_factory
     if _engine is not None:

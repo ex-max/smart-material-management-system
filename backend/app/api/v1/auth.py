@@ -28,6 +28,7 @@ def _current_user_out(db: Session, user: User) -> dict:
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     ip = request.client.host if request.client else None
     user, token, expires_in = AuthService(db).login(payload.username, payload.password, ip)
+    request.state.current_user = {"id": user.id, "username": user.username}
     data = {
         "access_token": token,
         "token_type": "bearer",

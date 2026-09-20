@@ -7,6 +7,7 @@ from app.api.v1 import (
     inventory_ops,
     ledger,
     master,
+    operation_logs,
     purchase,
     replenishment,
     roles,
@@ -24,3 +25,4 @@ api_router.include_router(inventory_ops.router)
 api_router.include_router(ledger.router)
 api_router.include_router(forecast.router)
 api_router.include_router(replenishment.router)
+api_router.include_router(operation_logs.router)

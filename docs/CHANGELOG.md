@@ -278,4 +278,23 @@ DELETE FROM model_registry;
   或强制生成新批次：`make sync-forecast BASE=http://127.0.0.1:8080 ARGS="--batch-version v2"`。
 - **备注**：需求历史为生成器产出（与 M3 同源），属演示/论文口径而非真实业务流水；建议只用 ML 驱动 ROP，未读取策略的 `rop_override`/`safety_stock_override`（既有 M6 行为）。已知坑与后续项已记入 `docs/progress.md`。**未改服务器配置/nginx/Docker**，故无 `CHANGELOG-ops` 条目。
 
+## 2026-09-20 · 操作日志写入与只读查询（S3）
+
+- **改动**：
+  - 新增 `backend/app/core/audit.py`：请求 → 审计字段的**脱敏**提取（module 路径前缀映射、resource_type/resource_id、method、path=url.path、ip、UA、request_id，全部按 §10.6 列宽截断）；明确**不读**请求体/Authorization/cookie/query string。
+  - 新增 `backend/app/repository/operation_log.py`、`schema/operation_log.py`、`service/operation_log.py`、`api/v1/operation_logs.py`：`GET /operation-logs` 分页 + 过滤（user_id/module/action/result/start_time/end_time），按 created_at desc, id desc 排序，返回 `ApiResponse[PageOut[OperationLogOut]]`；`operation:view` 鉴权。
+  - `backend/app/main.py`：在 trace 中间件**内层**新增 audit 中间件，响应后 best-effort 落库（独立 session；失败只记 `app.audit`，绝不影响主请求）；`request_id` 取 trace_id，与响应 X-Trace-Id 一致；健康检查/文档/OPTIONS 跳过。异常处理器写 `request.state.error_code`，使 4xx/5xx 能落真实 error_code。
+  - `backend/app/api/deps.py`、`api/v1/auth.py`：登录成功与已认证请求写 `request.state.current_user`，供审计捕获操作人。
+  - `backend/app/core/permissions.py`：新增 `operation:view`（PERMISSION_SEED 排序 80）；`scripts/seed.py` 无需改动（幂等补齐并授予 ADMIN）。
+  - `backend/app/core/database.py`：新增 `configure_bind()` 测试/旁路 session 绑定钩子；`tests/conftest.py` 用它让审计独立 session 落同一测试库。
+  - 新增 `backend/tests/test_operation_log.py`（5 条）。
+- **原因**：`docs/progress.md` 的"下一步" operation_log —— 表在 `0001` 迁移已建但写入/查询未实现（`GET /operation-logs` 404）。本切片只做后端 + 测试，前端页面留后续。
+- **依赖**：**未引入新依赖**（仅标准库 + 现有 FastAPI/SQLAlchemy）。
+- **验证**：
+  - `make verify` 绿且 **0 skip**：后端 ruff 通过、**pytest 73 passed**（原 68 + 新 5）、ml 67 passed、前端 lint、迁移链 1455 行、领域不变量通过。
+  - 测试覆盖：成功请求（登录）落 SUCCESS 且 user_id/username/trace 正确；失败请求（`GET /forecast-runs/999999` → 404）落 FAIL + error_code=10404 + resource_id；脱敏（日志全量 JSON 无 password/token/Bearer/JWT，path 无 ?）；分页 + result/action/时间区间过滤；匿名 401 / 无权限 403 / 管理员 200。
+  - 部署验证（仅重建 `erp-api`）：`server-health.sh -q` 前后均 **47/0/0 PASS**；`erp-api` healthy；实机 `GET /operation-logs` 返回登录审计（admin/auth/login/SUCCESS），`GET /forecast-runs/999999` 落 FAIL（10404）；`operation:view` 已 seed 并授予 ADMIN。
+- **回滚**：`git revert <本次提交>`（新增文件 + 少量接线，无迁移）。运行时镜像回滚见 `/root/dsh/CHANGELOG-ops.md`（`erp-api:rollback-20260920-s3`）。`operation_log` 为追加写，本切片只插入；如需清空 `DELETE FROM operation_log;`（审计数据，无业务副作用）。
+- **备注**：审计中间件是**请求级通用**记录，`detail` 只放 FAIL 的 HTTP 状态码，不含业务参数（避免读 body 带来的泄漏与性能开销）；如需业务级 detail（单据号/变更前后），后续在 service 层按需补写。前端「操作日志」页面与 `npm run gen:api` 留后续切片。**服务器改动已记 `/root/dsh/CHANGELOG-ops.md`**。
+
 

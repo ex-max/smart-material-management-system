@@ -1,5 +1,5 @@
 import jwt
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> User:
@@ -28,6 +29,8 @@ def get_current_user(
     user = UserRepository(db).get(int(raw_sub))
     if user is None or user.deleted_at is not None:
         raise Unauthorized("用户不存在")
+    # 供审计中间件读取操作人（best-effort；匿名请求不设置）
+    request.state.current_user = {"id": user.id, "username": user.username}
     return user
 
 
