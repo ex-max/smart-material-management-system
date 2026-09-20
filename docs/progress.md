@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- **里程碑**：**M8 前端业务页面完成**（主数据 + 采购 + 库存 + 决策前端；`make verify` 绿且 **0 skip**，已重建部署）。
-- **更新时间**：2026-09-19
+- **里程碑**：**S2 预测接入补货决策完成**（ML 分层预测经 API 落 `forecast_*` 六表 + 3 条可解释补货建议；`make verify` 绿且 **0 skip**）。
+- **更新时间**：2026-09-20
 
 ## 已完成
 
@@ -43,6 +43,8 @@
 
 - [x] **现实演示数据入库**：新增 `backend/scripts/seed_demo.py` + `make seed-demo`（走 HTTP API，尊重状态机与库存不变量；主数据按编码幂等、单据以 `[DEMO]` 标记幂等）。已入库：单位 10 / 分类 21（两级树）/ 供应商 8 / 仓库 3 / 库位 10 / 物资 26；请购单 7、采购订单 5、到货验收单 5、入库单 4、出库单 4、调拨单 2、盘点单 2、库存结存 10、库存流水 17；状态覆盖草稿/待审/已审/执行中/完成；库存对账 `ok=true`。
 
+- [x] **S2 预测结果接入后端 forecast_* 与补货决策（本会话垂直切片）**：新增 `ml/erp_ml/sync_forecast.py` + `make sync-forecast`（复用 `ml/.venv` 与 M3–M7 代码，仅标准库 HTTP）。以 `catalog_source="db"` **只读**业务主数据，为 26 物资 × 3 仓库生成 3 年日需求（seed=14），按 M4 分层映射（SMOOTH/ERRATIC→LightGBM、INTERMITTENT/LUMPY→Croston）输出未来 14 天预测；经后端 API 落库：**模型注册 2 / 预测批次 1（`FR-20260920-0001`，78 序列 × 14 步 = 1092 条结果，SUCCESS）/ 需求序列元数据 78 / 补货策略 1 / 补货建议 3（OPEN）**。重复执行幂等（批次数不变：新增 0、更新 3）；建议可解释（D̂/σD/SS/ROP/参数来源，`reason` 含 `model=lightgbm_demand`）；前端「补货决策」页直接展示，未改前端。新增 `ml/tests/test_sync_forecast.py`（6 条）与后端决策测试 2 条（最新 SUCCESS 批次生效 / RUNNING 批次忽略）。
+
 ## 进行中
 
 - [ ] 无
@@ -50,6 +52,8 @@
 ## 下一步（只做这一条）
 
 **operation_log 写入逻辑**：表已建但未落库；按 `docs/db-schema.md` §10.6（追加写、不更新）实现请求级日志中间件或 service 钩子（记录 user/trace_id/path/method/result/duration/resource），并提供只读查询接口；注意不要记录密码/token。
+
+> S2 的后续可选项（预测区间落库、决策页列表展示模型名/批次、固定策略 override）见「已知坑」，均非阻塞。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -113,6 +117,14 @@
 | M8 验收库位 | `useMasterOptions` 无库位选项，到货验收的 `location_id` 用可选数字输入；后续可做「仓库→库位」联动下拉 | M8 记录 |
 | M8 部署更新 | `make up` 重建 `erp-api`/`erp-web`（`erp-postgres` 不重建）；前端多阶段源码构建，`deploy/.env` 的 `NPM_REGISTRY`/`PIP_INDEX_URL` 走镜像源 | M8 记录 |
 | M8 演示数据 | `make seed-demo`（`backend/scripts/seed_demo.py`）走 API 造数，需后端已运行（部署栈用 `make seed-demo BASE=http://127.0.0.1:8080`）；主数据按编码幂等、单据以 `[DEMO]` 标记整体跳过；脚本中途失败需先清理已生成单据再重跑 | M8 记录 |
+| S2 序列口径/对应 | 不建「800 合成 SKU → 26 业务物资」手工对应表；用生成器业务目录模式（`catalog_source="db"`，只读主数据）按业务 `material_id × warehouse_id` 生成需求；`series_key = material_id:warehouse_id`（与后端 `ForecastService.series_key_for` 一致） | S2 记录 |
+| S2 seed/触发选择 | 需求生成 seed=14（在 1–80 中筛选，使 10 个有结存的物资×仓组合产生 3 条触发，覆盖物资 9/21）；seed 是实验参数而非业务规则，随 token 记录、可复现 | S2 记录 |
+| S2 幂等 | 批次幂等在脚本侧：稳定 token 写入 `forecast_run.remark`，命中即复用（不新建批次/不重复结果）；`demand-series-meta` 为 upsert，model-registry/policy 按编码跳过。强制新批次可用 `--batch-version`（或改 SEED/HORIZON） | S2 记录 |
+| S2 预测区间 | 本批 `forecast_result.y_lower/y_upper` 留空（前端决策页不依赖；区间方法待定，避免过度声称） | 待后续切片 |
+| S2 决策页模型名 | 建议表不单列模型名，模型名在建议详情 `reason`（`model=lightgbm_demand`）；若要列表列展示，需后端在建议出参补 `model_code` 并重跑 `gen:api` + 重建前端 | 待后续切片 |
+| S2 策略 override 未生效 | 后端决策服务始终按预测公式算 SS/ROP，未读取 `safety_stock_override`/`rop_override`（`strategy=FIXED` 同此）；本次 `strategy=FORECAST` 不受影响 | 既有（M6） |
+| S2 运行前置 | `make sync-forecast` 需后端已起（默认 8000；部署栈 `BASE=http://127.0.0.1:8080`）且 `127.0.0.1:5433` 业务库可读（只读 `material`/`warehouse`） | S2 记录 |
+| S2 建议覆盖范围 | 决策服务只遍历 `inventory` 行（当前 10 个物资×仓组合），无结存物资不生成建议；要覆盖更多须先经业务单据入库（预测脚本绝不写业务表） | S2 记录 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -135,3 +147,4 @@
 | 2026-09-19 | M8 主数据前端：仅通过 `/material-categories`、`/materials`、`/units`、`/suppliers`、`/warehouses`、`/locations` API 读写档案，不触碰 `inventory`/`inventory_batch`/`inventory_transaction`；登录返回权限码为只读 | 不涉及结存变更；`GET /inventory/reconcile` 口径不变；SQLite 后端 66 passed |
 | 2026-09-19 | M8 采购/库存前端：仅通过 `purchase-requisitions`/`purchase-orders`/`supplier-deliveries`/`inbound-orders`/`outbound-orders`/`transfer-orders`/`stocktake-orders`/`inventory*`/`stock-alerts` API 操作；过账/红冲调用后端 service（`stock_ledger` 唯一结存入口），前端不直连库、不改结存；库存查询页提供一键 `GET /inventory/reconcile` | 不涉及结存变更；后端 66 passed，`make verify` 绿 |
 | 2026-09-19 | M8 演示数据：通过 API 生成采购入库/出库/调拨/盘点，结存全部由 `stock_ledger` 流水推导；`GET /inventory/reconcile` 四条差异均为 0 | `reconcile.ok=true`；库存结存 10 行、流水 17 条；未直接改库结存 |
+| 2026-09-20 | S2 预测接入：同步脚本只读业务主数据（`material`/`warehouse`）生成需求，只写 `forecast_*` 与 `replenishment_*`；决策服务只读 `inventory`（结存/锁定）与在途汇总，不写 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；`reconcile` 口径不变；同步前后库存表零写入 |

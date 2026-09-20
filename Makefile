@@ -1,5 +1,5 @@
 # 毕设项目统一入口（人和 agent 都用这几个命令）
-.PHONY: verify test lint migrate gen-data baseline forecast simulate lstm ml-venv ml-test ml-lint ml-lstm perf-venv perf serve seed seed-demo up down ps logs clean
+.PHONY: verify test lint migrate gen-data baseline forecast simulate lstm ml-venv ml-test ml-lint ml-lstm perf-venv perf serve seed seed-demo sync-forecast up down ps logs clean
 
 verify:            ## 质量门禁：结构 + lint + 测试 + 迁移 + ML（交付前必跑）
 	./scripts/verify.sh
@@ -51,6 +51,10 @@ seed:              ## 初始化 RBAC 参考数据 + 管理员（幂等；需可�
 
 seed-demo:         ## 生成现实演示业务数据（走 API，尊重状态机/库存不变量；幂等）
 	cd backend && ERP_BASE_URL="$(or $(BASE),http://127.0.0.1:8000)" .venv/bin/python -m scripts.seed_demo
+
+sync-forecast:     ## S2：ML 分层预测同步进业务库 forecast_* 并生成补货建议（走 API；幂等，SEED/HORIZON/ARGS 可覆盖）
+	cd ml && ERP_BASE_URL="$(or $(BASE),http://127.0.0.1:8000)" .venv/bin/python -m erp_ml.sync_forecast \
+		--seed $(or $(SEED),14) --horizon $(or $(HORIZON),14) $(ARGS)
 
 perf-venv:         ## 创建性能测试独立虚拟环境（Locust，项目内隔离）
 	cd perf && python3 -m venv --without-pip .venv \

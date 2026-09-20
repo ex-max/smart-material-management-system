@@ -296,3 +296,36 @@ def test_permissions(client, login, replenishment_users):
     assert (
         client.post("/api/v1/replenishment-suggestions/1/convert", headers=rconverter).status_code == 404
     )
+
+
+def test_decision_reads_latest_successful_batch(client, decision_env):
+    """决策服务必须读取「最新 SUCCESS/PARTIAL 批次」，新批次取代旧批次。"""
+    headers = decision_env["headers"]
+    material_id = decision_env["material_id"]
+    warehouse_id = decision_env["warehouse_id"]
+
+    run2 = client.post("/api/v1/forecast-runs", headers=headers, json={"horizon_days": 7}).json()["data"]
+    _ingest_forecast(client, headers, material_id, warehouse_id, run2["id"], y_hat="25")
+    client.post("/api/v1/forecast-runs/%d/finish" % run2["id"], headers=headers, json={"status": "SUCCESS"})
+
+    _generate(client, decision_env)
+    suggestion = _suggestion_for(client, decision_env, material_id)
+    assert suggestion["forecast_run_id"] == run2["id"]
+    assert Decimal(suggestion["daily_demand_hat"]) == Decimal("25.0000")
+    assert "forecast_run=%d" % run2["id"] in suggestion["reason"]
+
+
+def test_running_batch_ignored_by_decision(client, decision_env):
+    """未 finish 的 RUNNING 批次不得被决策服务采用（避免半批数据污染建议）。"""
+    headers = decision_env["headers"]
+    material_id = decision_env["material_id"]
+    warehouse_id = decision_env["warehouse_id"]
+
+    run2 = client.post("/api/v1/forecast-runs", headers=headers, json={"horizon_days": 7}).json()["data"]
+    _ingest_forecast(client, headers, material_id, warehouse_id, run2["id"], y_hat="99")
+    # 不 finish，保持 RUNNING
+    _generate(client, decision_env)
+
+    suggestion = _suggestion_for(client, decision_env, material_id)
+    assert suggestion["forecast_run_id"] == decision_env["run_id"]
+    assert Decimal(suggestion["daily_demand_hat"]) == Decimal("10.0000")

@@ -28,6 +28,7 @@ curl -fsSL -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py
 | `make baseline` | 基线滚动回测（Naive / 季节 Naive / MA7 / MA28 / ETS）→ `ml/results/` |
 | `make forecast` | M4 预测实验（滞后/滑动/日历特征 + LightGBM + Croston/TSB/ARIMA，按象限映射）→ `ml/results/` |
 | `make simulate` | M5 动态 SS/ROP + 补货建议 + A/B 库存仿真（30 seed + Wilcoxon）→ `ml/results/` |
+| `make sync-forecast` | S2：读业务库 26 物资 × 3 仓库分层预测 → 经 API 写 `forecast_*` 六表并生成补货建议（幂等；`BASE`/`SEED`/`HORIZON`/`ARGS` 可覆盖） |
 | `make lstm` | M7 余力：LSTM 与 LightGBM 需求预测对比（torch 为可选依赖）→ `ml/results/` |
 | `make ml-lstm` | 安装 LSTM 可选依赖 torch（CPU 轮子，项目内隔离） |
 | `make ml-test` / `make ml-lint` | ML 单元测试 / lint |

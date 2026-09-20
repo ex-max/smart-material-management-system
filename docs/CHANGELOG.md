@@ -251,3 +251,31 @@
 - **回滚**：脚本不含删除逻辑；如需清空，先作废/删除可操作单据，再软删（`deleted_at`）带 `[DEMO]` 标记的单据与主数据；或 `git revert <本次提交>`（仅脚本与文档）。
 - **备注**：`make seed-demo` 需后端运行（本地 `127.0.0.1:8000`；部署栈 `make seed-demo BASE=http://127.0.0.1:8080`）；幂等（主数据按编码、单据按 `[DEMO]` 标记整体跳过）。
 
+## 2026-09-20 · 预测接入补货决策（S2）
+
+- **改动**：
+  - 新增 `ml/erp_ml/sync_forecast.py`：可重跑同步脚本（复用 `ml/.venv` 与 M3–M7 代码；HTTP 写入仅用标准库）。以 `catalog_source="db"` **只读**业务库 `material`/`warehouse`，用生成器为 26 物资 × 3 仓库生成 3 年日需求（seed=14），按 M4 分层映射预测未来 14 天——SMOOTH/ERRATIC→LightGBM 面板模型、INTERMITTENT/LUMPY→Croston；预测期严格在历史之后。
+  - `Makefile` 新增 `sync-forecast` 目标（`BASE`/`SEED`/`HORIZON`/`ARGS` 可覆盖），走 API 依次写：`POST /model-registry` → `POST /forecast-runs` → `POST /forecast-runs/{id}/results` → `POST /forecast-runs/{id}/finish` → `POST /demand-series-meta` → `POST /replenishment-policies` → `POST /replenishment-suggestions/generate`。
+  - 新增 `ml/tests/test_sync_forecast.py`（6 条：token 稳定性、remark 幂等命中、模型映射、meta/result payload 形状与 NaN 归零、模型/策略契约）；后端 `tests/test_replenishment.py` 增 2 条（决策读取最新 SUCCESS 批次、忽略 RUNNING 半批）。
+- **原因**：`docs/progress.md` 的 S2 垂直切片目标 —— 此前六表（forecast_run/forecast_result/demand_series_meta/model_registry/replenishment_policy/replenishment_suggestion）全为 0，前端「补货决策」页是空壳；本次把 ML 预测结果接入后端六表与决策服务。
+- **口径（开工三问的推荐方案，用户已确认「按推荐来」）**：
+  - (a) **不做**「800 合成 SKU → 26 业务物资」手工对应表；直接用生成器的业务目录模式按业务主键生成需求，避免人为映射。
+  - (b) 用 ML 模型对业务库现有 26 个物资**重新生成**一个预测批次，而非把 M5 合成 seed 建议硬映射进来。
+  - (c) `series_key = "material_id:warehouse_id"`，与后端 `ForecastService.series_key_for` 一致。
+- **依赖**：无新增依赖（`ml/.venv` 已有 numpy/pandas/lightgbm/psycopg；HTTP 仅标准库）。
+- **本次实验参数 / 写入结果**：seed=14、years=3、warehouses=3、horizon=14、batch-version=v1；token `forecast-business-s14-y3-w3-h14-v1`。落库：模型注册 **2**（`lightgbm_demand`/`croston_demand`，version `v1-20260919`，metrics 追溯 `20260919-1051_m4-forecast`）；预测批次 **1**（`FR-20260920-0001`，SUCCESS，78 序列 × 14 步 = **1092** 条结果）；需求序列元数据 **78**；补货策略 **1**（`POL-FORECAST-26`，全局 FORECAST，CSL=0.95）；补货建议 **3**（OPEN，物资 9×仓 1/仓 3、物资 21×仓 2）。
+- **幂等**：重复执行第二次 —— 模型新增 0、批次命中复用（run 数保持 1、结果保持 1092）、建议 `created=0 updated=3`。
+- **验证**：`make verify` 绿且 **0 skip**（后端 **68 passed**、ml **67 passed**、前端 lint、迁移链 1455 行、不变量通过）。API 复核：`GET /replenishment-suggestions` total=3（含 forecast_run_id=1、policy_id=1、D̂/σD/SS/ROP/建议量），详情 reason 含 `model=lightgbm_demand`；`GET /forecast-runs` total=1（SUCCESS）；`GET /model-registry` total=2；`GET /replenishment-policies` total=1。前端「补货决策」页（部署栈 `http://127.0.0.1:8080`）直接展示，**未改前端**（模型名已在建议详情 reason 中呈现）。
+- **回滚**：`git revert <本次提交>`（新增脚本/测试/Makefile/文档，无迁移/业务表副作用）。若需清掉本次写入的六表数据（这些表本次前均为 0，可安全清空）：
+```sql
+DELETE FROM replenishment_suggestion;
+DELETE FROM replenishment_policy;
+DELETE FROM forecast_result;
+DELETE FROM forecast_run;
+DELETE FROM demand_series_meta;
+DELETE FROM model_registry;
+```
+  或强制生成新批次：`make sync-forecast BASE=http://127.0.0.1:8080 ARGS="--batch-version v2"`。
+- **备注**：需求历史为生成器产出（与 M3 同源），属演示/论文口径而非真实业务流水；建议只用 ML 驱动 ROP，未读取策略的 `rop_override`/`safety_stock_override`（既有 M6 行为）。已知坑与后续项已记入 `docs/progress.md`。**未改服务器配置/nginx/Docker**，故无 `CHANGELOG-ops` 条目。
+
+
