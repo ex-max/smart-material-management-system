@@ -167,7 +167,7 @@ class AttachmentService:
                 raise AttachmentTypeNotAllowed("不允许的附件类型：" + mime)
         return ext
 
-    def save(self, upload, biz_type: str, biz_id: int, operator_id: int | None = None) -> Attachment:
+    def save(self, upload, biz_type: str | None = None, biz_id: int | None = None, operator_id: int | None = None) -> Attachment:
         original = Path(upload.filename or "unnamed").name or "unnamed"
         ext = self._validate(original, upload.content_type)
         settings = get_settings()
@@ -233,4 +233,3 @@ class AttachmentService:
         obj = self.get(item_id)
         obj.deleted_at = utcnow()
         self.db.commit()
-

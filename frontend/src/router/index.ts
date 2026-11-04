@@ -124,6 +124,31 @@ const router = createRouter({
           component: () => import('@/views/HomeView.vue'),
           meta: { title: '概览' },
         },
+        // ---- 系统管理 ----
+        {
+          path: 'system/operation-logs',
+          name: 'system-operation-logs',
+          component: () => import('@/views/system/OperationLogsView.vue'),
+          meta: { title: '操作日志' },
+        },
+        {
+          path: 'system/dicts',
+          name: 'system-dicts',
+          component: () => import('@/views/system/DictView.vue'),
+          meta: { title: '数据字典' },
+        },
+        {
+          path: 'system/tasks',
+          name: 'system-tasks',
+          component: () => import('@/views/system/TaskLogsView.vue'),
+          meta: { title: '定时任务' },
+        },
+        {
+          path: 'system/attachments',
+          name: 'system-attachments',
+          component: () => import('@/views/system/AttachmentsView.vue'),
+          meta: { title: '附件管理' },
+        },
       ],
     },
     {

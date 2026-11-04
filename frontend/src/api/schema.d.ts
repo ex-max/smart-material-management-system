@@ -1582,10 +1582,216 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operation-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Operation Logs */
+        get: operations["list_operation_logs_api_v1_operation_logs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dict-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Dict Types */
+        get: operations["list_dict_types_api_v1_dict_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dicts/{dict_type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lookup Dict */
+        get: operations["lookup_dict_api_v1_dicts__dict_type__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dict-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Dict Items */
+        get: operations["list_dict_items_api_v1_dict_items_get"];
+        put?: never;
+        /** Create Dict Item */
+        post: operations["create_dict_item_api_v1_dict_items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dict-items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Dict Item */
+        get: operations["get_dict_item_api_v1_dict_items__item_id__get"];
+        /** Update Dict Item */
+        put: operations["update_dict_item_api_v1_dict_items__item_id__put"];
+        post?: never;
+        /** Delete Dict Item */
+        delete: operations["delete_dict_item_api_v1_dict_items__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduled-task-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Scheduled Task Logs */
+        get: operations["list_scheduled_task_logs_api_v1_scheduled_task_logs_get"];
+        put?: never;
+        /** Append Scheduled Task Log */
+        post: operations["append_scheduled_task_log_api_v1_scheduled_task_logs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduled-task-logs/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Scheduled Task Log */
+        get: operations["get_scheduled_task_log_api_v1_scheduled_task_logs__item_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduled-task-logs/{item_id}/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish Scheduled Task Log */
+        post: operations["finish_scheduled_task_log_api_v1_scheduled_task_logs__item_id__finish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Attachments */
+        get: operations["list_attachments_api_v1_attachments_get"];
+        put?: never;
+        /** Upload Attachment */
+        post: operations["upload_attachment_api_v1_attachments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachments/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Attachment */
+        get: operations["get_attachment_api_v1_attachments__item_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Attachment */
+        delete: operations["delete_attachment_api_v1_attachments__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachments/{item_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Attachment */
+        get: operations["download_attachment_api_v1_attachments__item_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ApiResponse[AttachmentOut] */
+        ApiResponse_AttachmentOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["AttachmentOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[ConvertResponse] */
         ApiResponse_ConvertResponse_: {
             /** Code */
@@ -1632,6 +1838,19 @@ export interface components {
             /** Message */
             message: string;
             data?: components["schemas"]["DemandSeriesMetaOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[DictItemOut] */
+        ApiResponse_DictItemOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["DictItemOut"] | null;
             /**
              * Trace Id
              * @default
@@ -1807,6 +2026,19 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[PageOut[AttachmentOut]] */
+        ApiResponse_PageOut_AttachmentOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_AttachmentOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[PageOut[DeliveryOut]] */
         ApiResponse_PageOut_DeliveryOut__: {
             /** Code */
@@ -1827,6 +2059,19 @@ export interface components {
             /** Message */
             message: string;
             data?: components["schemas"]["PageOut_DemandSeriesMetaOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[DictItemOut]] */
+        ApiResponse_PageOut_DictItemOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_DictItemOut_"] | null;
             /**
              * Trace Id
              * @default
@@ -1989,6 +2234,19 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[PageOut[OperationLogOut]] */
+        ApiResponse_PageOut_OperationLogOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_OperationLogOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[PageOut[OutboundOrderOut]] */
         ApiResponse_PageOut_OutboundOrderOut__: {
             /** Code */
@@ -2048,6 +2306,19 @@ export interface components {
             /** Message */
             message: string;
             data?: components["schemas"]["PageOut_ReplenishmentSuggestionOut_"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[PageOut[ScheduledTaskLogOut]] */
+        ApiResponse_PageOut_ScheduledTaskLogOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["PageOut_ScheduledTaskLogOut_"] | null;
             /**
              * Trace Id
              * @default
@@ -2184,6 +2455,19 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[ScheduledTaskLogOut] */
+        ApiResponse_ScheduledTaskLogOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["ScheduledTaskLogOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** ApiResponse[SnapshotResult] */
         ApiResponse_SnapshotResult_: {
             /** Code */
@@ -2289,15 +2573,80 @@ export interface components {
              */
             trace_id: string;
         };
+        /** ApiResponse[list[DictItemOut]] */
+        ApiResponse_list_DictItemOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            /** Data */
+            data?: components["schemas"]["DictItemOut"][] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[list[DictTypeOut]] */
+        ApiResponse_list_DictTypeOut__: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            /** Data */
+            data?: components["schemas"]["DictTypeOut"][] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
         /** AssignRolesIn */
         AssignRolesIn: {
             /** Role Ids */
             role_ids?: number[];
         };
+        /** AttachmentOut */
+        AttachmentOut: {
+            /** Id */
+            id: number;
+            /** Biz Type */
+            biz_type: string | null;
+            /** Biz Id */
+            biz_id: number | null;
+            /** File Name */
+            file_name: string;
+            /** File Path */
+            file_path: string;
+            /** File Size */
+            file_size: number | null;
+            /** Content Type */
+            content_type: string | null;
+            /** Sha256 */
+            sha256: string | null;
+            /** Storage */
+            storage: string;
+            /** Uploaded By */
+            uploaded_by: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** BatchConvertIn */
         BatchConvertIn: {
             /** Suggestion Ids */
             suggestion_ids: number[];
+        };
+        /** Body_upload_attachment_api_v1_attachments_post */
+        Body_upload_attachment_api_v1_attachments_post: {
+            /** File */
+            file: string;
+            /** Biz Type */
+            biz_type?: string | null;
+            /** Biz Id */
+            biz_id?: number | null;
         };
         /** CancelIn */
         CancelIn: {
@@ -2567,6 +2916,67 @@ export interface components {
             last_calc_at: string | null;
             /** Remark */
             remark: string | null;
+        };
+        /** DictItemCreate */
+        DictItemCreate: {
+            /** Dict Type */
+            dict_type: string;
+            /** Dict Key */
+            dict_key: string;
+            /** Dict Label */
+            dict_label: string;
+            /**
+             * Sort No
+             * @default 0
+             */
+            sort_no: number;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+            /** Remark */
+            remark?: string | null;
+        };
+        /** DictItemOut */
+        DictItemOut: {
+            /** Id */
+            id: number;
+            /** Dict Type */
+            dict_type: string;
+            /** Dict Key */
+            dict_key: string;
+            /** Dict Label */
+            dict_label: string;
+            /** Sort No */
+            sort_no: number;
+            /** Is Active */
+            is_active: boolean;
+            /** Remark */
+            remark: string | null;
+        };
+        /**
+         * DictItemUpdate
+         * @description dict_type/dict_key 不可改（与主数据 code 口径一致）。
+         */
+        DictItemUpdate: {
+            /** Dict Label */
+            dict_label?: string | null;
+            /** Sort No */
+            sort_no?: number | null;
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Remark */
+            remark?: string | null;
+        };
+        /** DictTypeOut */
+        DictTypeOut: {
+            /** Dict Type */
+            dict_type: string;
+            /** Item Count */
+            item_count: number;
+            /** Active Count */
+            active_count: number;
         };
         /** ForecastResultBulkIn */
         ForecastResultBulkIn: {
@@ -3315,6 +3725,48 @@ export interface components {
             /** Remark */
             remark: string | null;
         };
+        /** OperationLogOut */
+        OperationLogOut: {
+            /** Id */
+            id: number;
+            /** User Id */
+            user_id: number | null;
+            /** Username */
+            username: string | null;
+            /** Module */
+            module: string | null;
+            /** Action */
+            action: string;
+            /** Resource Type */
+            resource_type: string | null;
+            /** Resource Id */
+            resource_id: string | null;
+            /** Method */
+            method: string | null;
+            /** Path */
+            path: string | null;
+            /** Ip */
+            ip: string | null;
+            /** User Agent */
+            user_agent: string | null;
+            /** Request Id */
+            request_id: string | null;
+            /** Result */
+            result: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** OutboundCreate */
         OutboundCreate: {
             /** Warehouse Id */
@@ -3754,6 +4206,13 @@ export interface components {
             /** Items */
             items?: components["schemas"]["PRItemIn"][] | null;
         };
+        /** PageOut[AttachmentOut] */
+        PageOut_AttachmentOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["AttachmentOut"][];
+        };
         /** PageOut[DeliveryOut] */
         PageOut_DeliveryOut_: {
             /** Total */
@@ -3767,6 +4226,13 @@ export interface components {
             total: number;
             /** Items */
             items: components["schemas"]["DemandSeriesMetaOut"][];
+        };
+        /** PageOut[DictItemOut] */
+        PageOut_DictItemOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["DictItemOut"][];
         };
         /** PageOut[ForecastResultOut] */
         PageOut_ForecastResultOut_: {
@@ -3852,6 +4318,13 @@ export interface components {
             /** Items */
             items: components["schemas"]["ModelRegistryOut"][];
         };
+        /** PageOut[OperationLogOut] */
+        PageOut_OperationLogOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["OperationLogOut"][];
+        };
         /** PageOut[OutboundOrderOut] */
         PageOut_OutboundOrderOut_: {
             /** Total */
@@ -3886,6 +4359,13 @@ export interface components {
             total: number;
             /** Items */
             items: components["schemas"]["ReplenishmentSuggestionOut"][];
+        };
+        /** PageOut[ScheduledTaskLogOut] */
+        PageOut_ScheduledTaskLogOut_: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["ScheduledTaskLogOut"][];
         };
         /** PageOut[StockAlertOut] */
         PageOut_StockAlertOut_: {
@@ -4163,6 +4643,34 @@ export interface components {
             /** Created */
             created: number;
         };
+        /** ScheduledTaskLogOut */
+        ScheduledTaskLogOut: {
+            /** Id */
+            id: number;
+            /** Task Name */
+            task_name: string;
+            /** Task Type */
+            task_type: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Affected Rows */
+            affected_rows: number | null;
+            /** Result Summary */
+            result_summary: string | null;
+            /** Error Detail */
+            error_detail: string | null;
+            /** Trace Id */
+            trace_id: string | null;
+        };
         /** SnapshotResult */
         SnapshotResult: {
             /**
@@ -4431,6 +4939,51 @@ export interface components {
             status?: string | null;
             /** Remark */
             remark?: string | null;
+        };
+        /** TaskLogAppend */
+        TaskLogAppend: {
+            /** Task Name */
+            task_name: string;
+            /** Task Type */
+            task_type?: string | null;
+            /**
+             * Status
+             * @default RUNNING
+             */
+            status: string;
+            /** Started At */
+            started_at?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Affected Rows */
+            affected_rows?: number | null;
+            /** Result Summary */
+            result_summary?: string | null;
+            /** Error Detail */
+            error_detail?: string | null;
+            /** Trace Id */
+            trace_id?: string | null;
+        };
+        /**
+         * TaskLogFinish
+         * @description 把 RUNNING 记录收尾为终态；已终态不可再改。
+         */
+        TaskLogFinish: {
+            /**
+             * Status
+             * @default SUCCESS
+             */
+            status: string;
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Affected Rows */
+            affected_rows?: number | null;
+            /** Result Summary */
+            result_summary?: string | null;
+            /** Error Detail */
+            error_detail?: string | null;
         };
         /** TransferCreate */
         TransferCreate: {
@@ -9141,6 +9694,556 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponse_ConvertResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_operation_logs_api_v1_operation_logs_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                user_id?: number | null;
+                module?: string | null;
+                action?: string | null;
+                result?: string | null;
+                start_time?: string | null;
+                end_time?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_PageOut_OperationLogOut__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_dict_types_api_v1_dict_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_list_DictTypeOut__"];
+                };
+            };
+        };
+    };
+    lookup_dict_api_v1_dicts__dict_type__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dict_type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_list_DictItemOut__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_dict_items_api_v1_dict_items_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                dict_type?: string | null;
+                keyword?: string | null;
+                is_active?: boolean | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_PageOut_DictItemOut__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_dict_item_api_v1_dict_items_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DictItemCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_DictItemOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dict_item_api_v1_dict_items__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_DictItemOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_dict_item_api_v1_dict_items__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DictItemUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_DictItemOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_dict_item_api_v1_dict_items__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_scheduled_task_logs_api_v1_scheduled_task_logs_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                task_name?: string | null;
+                task_type?: string | null;
+                status?: string | null;
+                start_time?: string | null;
+                end_time?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_PageOut_ScheduledTaskLogOut__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    append_scheduled_task_log_api_v1_scheduled_task_logs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskLogAppend"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_ScheduledTaskLogOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_scheduled_task_log_api_v1_scheduled_task_logs__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_ScheduledTaskLogOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finish_scheduled_task_log_api_v1_scheduled_task_logs__item_id__finish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskLogFinish"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_ScheduledTaskLogOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_attachments_api_v1_attachments_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                biz_type?: string | null;
+                biz_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_PageOut_AttachmentOut__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_attachment_api_v1_attachments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_attachment_api_v1_attachments_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_AttachmentOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_attachment_api_v1_attachments__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_AttachmentOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_attachment_api_v1_attachments__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_attachment_api_v1_attachments__item_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

@@ -26,9 +26,16 @@ async function load() {
   try {
     const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
     for (const [key, value] of Object.entries(filters)) {
-      if (value !== undefined && value !== null && value !== '') {
-        params[key] = value
+      if (value === undefined || value === null || value === '') {
+        continue
       }
+      const filter = (props.config.extraFilters || []).find((f) => f.prop === key)
+      if (filter?.type === 'datetime-range' && Array.isArray(value) && value.length === 2) {
+        params.start_time = value[0]
+        params.end_time = value[1]
+        continue
+      }
+      params[key] = value
     }
     const result = await props.config.fetch(params)
     rows.value = result.items
@@ -118,23 +125,44 @@ onMounted(load)
         >
           <el-option v-for="(meta, key) in config.statusMeta" :key="key" :label="meta.label" :value="key" />
         </el-select>
-        <el-select
-          v-for="filter in config.extraFilters || []"
-          :key="filter.prop"
-          v-model="filters[filter.prop]"
-          :placeholder="filter.label"
-          clearable
-          filterable
-          style="width: 190px"
-          @change="search"
-        >
-          <el-option
-            v-for="option in filter.options()"
-            :key="String(option.value)"
-            :label="option.label"
-            :value="option.value"
+        <template v-for="filter in config.extraFilters || []" :key="filter.prop">
+          <el-input
+            v-if="filter.type === 'input'"
+            v-model="filters[filter.prop]"
+            :placeholder="filter.placeholder || filter.label"
+            clearable
+            style="width: 200px"
+            @keyup.enter="search"
+            @clear="search"
           />
-        </el-select>
+          <el-date-picker
+            v-else-if="filter.type === 'datetime-range'"
+            v-model="filters[filter.prop]"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            :default-time="[new Date(2000, 0, 1, 0, 0, 0), new Date(2000, 0, 1, 23, 59, 59)]"
+            style="width: 360px"
+            @change="search"
+          />
+          <el-select
+            v-else
+            v-model="filters[filter.prop]"
+            :placeholder="filter.label"
+            clearable
+            filterable
+            style="width: 190px"
+            @change="search"
+          >
+            <el-option
+              v-for="option in filter.options ? filter.options() : []"
+              :key="String(option.value)"
+              :label="option.label"
+              :value="option.value"
+            />
+          </el-select>
+        </template>
         <el-button :icon="Search" @click="search">查询</el-button>
         <el-button @click="reset">重置</el-button>
         <slot name="toolbar" />

@@ -85,8 +85,8 @@ class ScheduledTaskLogOut(ORMBase):
 # ---------------- §13.3 attachment ----------------
 class AttachmentOut(ORMBase):
     id: int
-    biz_type: str
-    biz_id: int
+    biz_type: str | None
+    biz_id: int | None
     file_name: str
     file_path: str
     file_size: int | None

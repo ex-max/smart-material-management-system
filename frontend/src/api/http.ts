@@ -1,4 +1,9 @@
-import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import axios, {
+  AxiosError,
+  type AxiosProgressEvent,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios'
 import { ElMessage } from 'element-plus'
 
 import { useAuth } from '@/composables/useAuth'
@@ -14,6 +19,8 @@ export interface ApiEnvelope<T> {
 /** 单次请求选项：silent=true 时拦截器不弹全局错误提示（用于概览页对 403 静默降级）。 */
 export interface ApiCallOptions {
   silent?: boolean
+  /** 上传进度回调（axios 进度事件）。 */
+  onUploadProgress?: (event: AxiosProgressEvent) => void
 }
 
 declare module 'axios' {
@@ -69,6 +76,11 @@ export const api = {
   put: <T>(url: string, data?: unknown, options?: ApiCallOptions) =>
     unwrap<T>(http.put(url, data, options)),
   delete: <T>(url: string, options?: ApiCallOptions) => unwrap<T>(http.delete(url, options)),
+  /** multipart 上传（FormData），支持进度回调。 */
+  upload: <T>(url: string, formData: FormData, options?: ApiCallOptions) =>
+    unwrap<T>(http.post(url, formData, { onUploadProgress: options?.onUploadProgress })),
+  /** 二进制下载：直接返回 axios 响应（带 Content-Disposition 文件名）。 */
+  download: (url: string) => http.get(url, { responseType: 'blob' }),
 }
 
 export default http

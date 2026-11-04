@@ -249,6 +249,22 @@ def test_attachment_upload_download_list_delete(client, login, system_users, att
     assert list(attachment_dir.rglob("*.txt")), "软删不物理删除文件"
 
 
+def test_attachment_upload_without_biz(client, login, system_users, attachment_dir):
+    # P2：biz_type/biz_id 可选（通用附件，不绑定业务单据）
+    headers = login("sysmanager", "sysmanager123")
+    uploaded = client.post(
+        "/api/v1/attachments",
+        headers=headers,
+        files={"file": ("free.txt", b"free", "text/plain")},
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    att = uploaded.json()["data"]
+    assert att["biz_type"] is None
+    assert att["biz_id"] is None
+    listed = client.get("/api/v1/attachments", headers=headers)
+    assert listed.json()["data"]["total"] == 1
+
+
 def test_attachment_rejects_bad_type_and_empty(client, login, system_users, attachment_dir):
     headers = login("sysmanager", "sysmanager123")
     bad = client.post(

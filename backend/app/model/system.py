@@ -91,8 +91,9 @@ class Attachment(Base, AuditMixin):
     __tablename__ = "attachment"
 
     id: Mapped[int] = mapped_column(PK, primary_key=True)
-    biz_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    biz_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    biz_type: Mapped[str | None] = mapped_column(String(32))
+    # 关联业务类型（purchase_order…）；可选：不填表示未绑定业务单据的通用附件
+    biz_id: Mapped[int | None] = mapped_column(BigInteger)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     file_path: Mapped[str] = mapped_column(String(512), nullable=False)
     file_size: Mapped[int | None] = mapped_column(BigInteger)

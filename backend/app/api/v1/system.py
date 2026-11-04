@@ -183,8 +183,8 @@ def list_attachments(
 )
 def upload_attachment(
     file: UploadFile = File(...),
-    biz_type: str = Form(..., min_length=1, max_length=32),
-    biz_id: int = Form(..., ge=1),
+    biz_type: str | None = Form(None, max_length=32),
+    biz_id: int | None = Form(None, ge=1),
     user: User = Depends(_ATT_MANAGE),
     db: Session = Depends(get_db),
 ):

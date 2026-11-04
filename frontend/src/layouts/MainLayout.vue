@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   Box,
+  Clock,
   Coin,
   DataLine,
   Document,
@@ -11,6 +12,8 @@ import {
   Location,
   Menu as MenuIcon,
   OfficeBuilding,
+  Paperclip,
+  Setting,
   ShoppingCart,
   SwitchButton,
   Tickets,
@@ -24,7 +27,7 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
-const { user, logout } = useAuth()
+const { user, logout, hasAnyPerm } = useAuth()
 
 async function handleLogout() {
   try {
@@ -114,6 +117,28 @@ async function handleLogout() {
         <el-menu-item index="home" :route="{ name: 'home' }">
           <el-icon><HomeFilled /></el-icon><span>概览</span>
         </el-menu-item>
+
+        <el-sub-menu
+          v-if="hasAnyPerm(['operation:view', 'dict:view', 'task:view', 'attachment:view'])"
+          index="system"
+        >
+          <template #title>
+            <el-icon><Setting /></el-icon>
+            <span>系统管理</span>
+          </template>
+          <el-menu-item v-if="hasAnyPerm(['operation:view'])" index="system-operation-logs" :route="{ name: 'system-operation-logs' }">
+            <el-icon><List /></el-icon><span>操作日志</span>
+          </el-menu-item>
+          <el-menu-item v-if="hasAnyPerm(['dict:view'])" index="system-dicts" :route="{ name: 'system-dicts' }">
+            <el-icon><MenuIcon /></el-icon><span>数据字典</span>
+          </el-menu-item>
+          <el-menu-item v-if="hasAnyPerm(['task:view'])" index="system-tasks" :route="{ name: 'system-tasks' }">
+            <el-icon><Clock /></el-icon><span>定时任务</span>
+          </el-menu-item>
+          <el-menu-item v-if="hasAnyPerm(['attachment:view'])" index="system-attachments" :route="{ name: 'system-attachments' }">
+            <el-icon><Paperclip /></el-icon><span>附件管理</span>
+          </el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
     <el-container>

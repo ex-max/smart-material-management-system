@@ -21,10 +21,15 @@ export interface DocAction {
   run: (row: any) => Promise<unknown>
 }
 
+export type DocFilterType = 'select' | 'input' | 'datetime-range'
+
 export interface DocFilter {
   prop: string
   label: string
-  options: () => { label: string; value: any }[]
+  /** select 需提供 options()；input 为关键字输入；datetime-range 为时间区间（值 = [start, end] 或 null）。 */
+  type?: DocFilterType
+  options?: () => { label: string; value: any }[]
+  placeholder?: string
 }
 
 export interface DocConfig {
