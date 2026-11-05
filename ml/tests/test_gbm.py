@@ -81,3 +81,16 @@ def test_lightgbm_is_deterministic():
         LGBMForecaster(spec=_spec(), params=_fast_params(), num_boost_round=15), "lightgbm",
     )
     assert np.allclose([r["smape"] for r in row_a], [r["smape"] for r in row_b])
+
+
+def test_fit_records_train_residual_sigma():
+    rng = np.random.default_rng(3)
+    history = rng.gamma(3.0, 2.0, size=(90, 2))
+    dates = pd.date_range("2023-01-01", periods=90)
+    forecaster = LGBMForecaster(spec=_spec(), params=_fast_params(), num_boost_round=10).fit(
+        history, dates, 60
+    )
+    sigma = forecaster.train_residual_sigma_
+    assert sigma.shape == (2,)
+    assert np.all(np.isfinite(sigma))
+    assert np.all(sigma >= 0)

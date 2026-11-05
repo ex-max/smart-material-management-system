@@ -120,6 +120,12 @@ const router = createRouter({
         },
         // ---- 决策 ----
         {
+          path: 'forecast',
+          name: 'forecast',
+          component: () => import('@/views/ForecastView.vue'),
+          meta: { title: '预测曲线', permission: 'forecast:view' },
+        },
+        {
           path: 'replenishment',
           name: 'replenishment',
           component: () => import('@/views/ReplenishmentView.vue'),

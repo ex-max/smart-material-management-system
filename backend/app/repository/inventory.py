@@ -1,5 +1,7 @@
 """库存与入库数据访问，以及库存对账查询。"""
 
+from datetime import datetime
+
 from sqlalchemy import func, select
 
 from app.model.inventory import InboundItem, InboundOrder, Inventory, InventoryBatch, InventoryTransaction
@@ -102,6 +104,28 @@ class InventoryTransactionRepo:
         total = self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
         rows = self.db.execute(stmt.order_by(InventoryTransaction.id.desc()).offset(offset).limit(limit)).scalars().all()
         return list(rows), int(total)
+
+    def consumption_rows(self, material_id: int, warehouse_id: int | None, since: datetime):
+        """近段出库消耗流水（OUTBOUND + STOCKTAKE_LOSS，只读），供预测曲线历史聚合。
+
+        返回 [(occurred_at, quantity)]；出库/盘亏 quantity 为负，消耗量由服务层取绝对值求和。
+        """
+        pair = (
+            InventoryTransaction.warehouse_id.is_(None)
+            if warehouse_id is None
+            else InventoryTransaction.warehouse_id == warehouse_id
+        )
+        stmt = (
+            select(InventoryTransaction.occurred_at, InventoryTransaction.quantity)
+            .where(
+                InventoryTransaction.material_id == material_id,
+                pair,
+                InventoryTransaction.txn_type.in_(("OUTBOUND", "STOCKTAKE_LOSS")),
+                InventoryTransaction.occurred_at >= since,
+            )
+            .order_by(InventoryTransaction.occurred_at)
+        )
+        return list(self.db.execute(stmt).all())
 
     def sum_by_material_warehouse(self) -> dict[tuple[int, int], object]:
         stmt = select(

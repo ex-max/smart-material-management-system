@@ -3,7 +3,8 @@
 边界（AGENTS 不变量 4）：本模块只写 forecast_* 表，绝不回写业务表。
 """
 
-from datetime import timezone
+from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -16,7 +17,12 @@ from app.repository.forecast import (
     ForecastRunRepo,
     ModelRegistryRepo,
 )
+from app.repository.inventory import InventoryTransactionRepo
 from app.repository.master import MaterialRepo, WarehouseRepo
+
+# 预测区间口径（P4）：落库 95%，与 ml/erp_ml/intervals.py 一致（z=Φ⁻¹(0.975)）
+INTERVAL_LEVEL = 0.95
+INTERVAL_Z = 1.959963984540054
 
 
 def series_key_for(material_id: int, warehouse_id: int | None) -> str:
@@ -120,6 +126,70 @@ class ForecastService:
         self.db.commit()
         self.db.refresh(run)
         return run
+
+    def curves(self, material_id: int, warehouse_id: int | None, history_days: int) -> dict:
+        """预测曲线（只读聚合）：最新 SUCCESS/PARTIAL 批次结果 + 近 N 天实际消耗。
+
+        历史实际值口径（用户确认）：inventory_transaction 中 OUTBOUND + STOCKTAKE_LOSS
+        按日聚合取绝对值求和（出库/盘亏 quantity 为负）；TRANSFER_OUT/INBOUND 不计入。
+        绝不写任何表。
+        """
+        if MaterialRepo(self.db).get_active(material_id) is None:
+            raise BadRequest("物资不存在：" + str(material_id))
+        if warehouse_id is not None and WarehouseRepo(self.db).get_active(warehouse_id) is None:
+            raise BadRequest("仓库不存在：" + str(warehouse_id))
+
+        run, rows = self.results.latest_curve(material_id, warehouse_id)
+        base_date = run.forecast_start_date if run is not None and run.forecast_start_date else date.today()
+        history_end = base_date - timedelta(days=1)
+        history_start = base_date - timedelta(days=history_days)
+        since = datetime.combine(history_start, time.min).replace(tzinfo=timezone.utc)
+
+        consumed: dict[date, Decimal] = {}
+        for occurred_at, quantity in InventoryTransactionRepo(self.db).consumption_rows(
+            material_id, warehouse_id, since
+        ):
+            if occurred_at is None:
+                continue
+            day = occurred_at.date()
+            if day < history_start or day > history_end:
+                continue
+            qty = Decimal(str(quantity)) if quantity is not None else Decimal("0")
+            consumed[day] = consumed.get(day, Decimal("0")) + max(-qty, Decimal("0"))
+
+        history = [
+            {
+                "date": history_start + timedelta(days=offset),
+                "actual_qty": consumed.get(history_start + timedelta(days=offset), Decimal("0")),
+            }
+            for offset in range(history_days)
+        ]
+        forecast = [
+            {
+                "date": row.forecast_date,
+                "horizon_step": row.horizon_step,
+                "y_hat": row.y_hat,
+                "y_lower": row.y_lower,
+                "y_upper": row.y_upper,
+            }
+            for row in rows
+        ]
+        return {
+            "material_id": material_id,
+            "warehouse_id": warehouse_id,
+            "series_key": series_key_for(material_id, warehouse_id),
+            "run_id": run.id if run is not None else None,
+            "run_no": run.run_no if run is not None else None,
+            "run_status": run.status if run is not None else None,
+            "model_code": next((row.model_code for row in rows if row.model_code), None),
+            "model_version": next((row.model_version for row in rows if row.model_version), None),
+            "demand_class": next((row.demand_class for row in rows if row.demand_class), None),
+            "interval_level": INTERVAL_LEVEL,
+            "interval_z": INTERVAL_Z,
+            "history_days": history_days,
+            "history": history,
+            "forecast": forecast,
+        }
 
     def _require_refs(self, material_id: int, warehouse_id: int | None) -> None:
         if MaterialRepo(self.db).get_active(material_id) is None:

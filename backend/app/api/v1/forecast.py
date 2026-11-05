@@ -75,6 +75,26 @@ def finish_forecast_run(
     return ok(fs.ForecastRunOut.model_validate(ForecastService(db).finish_run(run_id, payload)).model_dump())
 
 
+@router.get(
+    "/forecast/curves",
+    name="get_forecast_curve",
+    response_model=ApiResponse[fs.ForecastCurveOut],
+)
+def get_forecast_curve(
+    material_id: int = Query(..., ge=1),
+    warehouse_id: int | None = Query(None, ge=1),
+    history_days: int = Query(90, ge=1, le=365),
+    user: User = Depends(_VIEW),
+    db: Session = Depends(get_db),
+):
+    """预测曲线（只读）：最新 SUCCESS/PARTIAL 批次的未来预测 + 近 N 天实际消耗。"""
+    return ok(
+        fs.ForecastCurveOut.model_validate(
+            ForecastService(db).curves(material_id, warehouse_id, history_days)
+        ).model_dump()
+    )
+
+
 # ---------------- 需求序列元数据 ----------------
 @router.get("/demand-series-meta", name="list_demand_series_meta", response_model=ApiResponse[PageOut[fs.DemandSeriesMetaOut]])
 def list_demand_series_meta(

@@ -51,7 +51,8 @@ from .config import GeneratorConfig
 from .dataset import build_dataset
 from .features import FeatureSpec
 from .gbm import DEFAULT_LGB_PARAMS, LGBMForecaster
-from .models import forecast, recommend_model
+from .intervals import INTERVAL_LEVEL, prediction_bounds, residual_std, z_score
+from .models import croston_residuals, forecast, recommend_model
 
 # 模型版本：与 M4/M7 结论绑定的固定版本号（进 model_registry.version 与逐条结果快照）
 MODEL_VERSION = "v1-20260919"
@@ -116,8 +117,14 @@ def build_result_payloads(
     future_dates: pd.DatetimeIndex,
     horizon: int,
     model_version: str,
+    sigmas: np.ndarray | None = None,
+    interval_level: float = INTERVAL_LEVEL,
 ) -> list[dict]:
-    """把 (horizon, n_series) 预测矩阵转成 /forecast-runs/{id}/results 入参。"""
+    """把 (horizon, n_series) 预测矩阵转成 /forecast-runs/{id}/results 入参。
+
+    sigmas 非空时按经验残差法写入 95% 预测区间 y_lower/y_upper
+    （下限截断 0，保证 y_lower <= y_hat <= y_upper，满足后端 CHECK）。
+    """
     payloads: list[dict] = []
     for j, row in enumerate(meta.itertuples()):
         model_code = model_code_for(str(row.demand_class))
@@ -125,19 +132,23 @@ def build_result_payloads(
             value = float(predictions[step - 1, j])
             if not math.isfinite(value):
                 value = 0.0
-            payloads.append(
-                {
-                    "series_key": str(row.series_key),
-                    "material_id": int(row.material_id),
-                    "warehouse_id": int(row.warehouse_id),
-                    "forecast_date": future_dates[step - 1].date().isoformat(),
-                    "horizon_step": step,
-                    "y_hat": round(max(value, 0.0), 4),
-                    "model_code": model_code,
-                    "model_version": model_version,
-                    "demand_class": str(row.demand_class),
-                }
-            )
+            item = {
+                "series_key": str(row.series_key),
+                "material_id": int(row.material_id),
+                "warehouse_id": int(row.warehouse_id),
+                "forecast_date": future_dates[step - 1].date().isoformat(),
+                "horizon_step": step,
+                "y_hat": round(max(value, 0.0), 4),
+                "model_code": model_code,
+                "model_version": model_version,
+                "demand_class": str(row.demand_class),
+            }
+            if sigmas is not None:
+                y_hat = item["y_hat"]
+                lower, upper = prediction_bounds(y_hat, float(sigmas[j]), interval_level)
+                item["y_lower"] = round(min(lower, y_hat), 4)
+                item["y_upper"] = round(max(upper, y_hat), 4)
+            payloads.append(item)
     return payloads
 
 
@@ -204,10 +215,13 @@ def build_policy_payload() -> dict:
     }
 
 
-def run_layered_forecast(ds, horizon: int) -> tuple[np.ndarray, pd.DatetimeIndex]:
+def run_layered_forecast(ds, horizon: int) -> tuple[np.ndarray, pd.DatetimeIndex, np.ndarray]:
     """对序列历史做「预测期在历史之后」的分层预测（长度 horizon × n_series）。
 
     LightGBM 用延伸日历 + 尾部 NaN 递归多步；Croston 只吃历史序列。严格只用历史。
+    同时返回逐序列训练残差 σ（经验残差法），供 95% 预测区间（intervals.py）使用：
+    - LightGBM 列：面板模型训练窗 in-sample 残差 std（gbm.LGBMForecaster.train_residual_sigma_）；
+    - Croston 列：Croston 状态重放残差 std（models.croston_residuals）。
     """
     matrix = ds.demand.astype(float)
     n_days, n_series = matrix.shape
@@ -219,10 +233,12 @@ def run_layered_forecast(ds, horizon: int) -> tuple[np.ndarray, pd.DatetimeIndex
     forecaster = LGBMForecaster(spec=spec, params=dict(DEFAULT_LGB_PARAMS), num_boost_round=300)
     forecaster.fit(matrix, ds.dates, n_days)
     predictions = forecaster.forecast(padded, extended_dates, n_days, horizon)
+    sigmas = np.asarray(forecaster.train_residual_sigma_, dtype=float).copy()
     for j, demand_class in enumerate(str(c) for c in ds.meta["demand_class"]):
         if recommend_model(demand_class) != "lightgbm":
             predictions[:, j] = forecast("croston", matrix[:, j], horizon, 7)
-    return predictions, future_dates
+            sigmas[j] = residual_std(croston_residuals(matrix[:, j]))
+    return predictions, future_dates, sigmas
 
 
 # ---------------------------------------------------------------------------
@@ -326,12 +342,18 @@ def main(argv: list[str] | None = None) -> int:
     _print_segments(ds.meta)
 
     print("分层预测：LightGBM 面板 + Croston（预测期在历史之后，horizon=%d）" % args.horizon)
-    predictions, future_dates = run_layered_forecast(ds, args.horizon)
+    predictions, future_dates, sigmas = run_layered_forecast(ds, args.horizon)
     meta_payloads = build_demand_meta_payloads(ds.meta, token)
-    result_payloads = build_result_payloads(ds.meta, predictions, future_dates, args.horizon, MODEL_VERSION)
+    result_payloads = build_result_payloads(
+        ds.meta, predictions, future_dates, args.horizon, MODEL_VERSION, sigmas=sigmas
+    )
     print(
         "  预测 %d 序列 × %d 步 = %d 条；预测期 %s → %s"
         % (ds.n_series, args.horizon, len(result_payloads), future_dates[0].date(), future_dates[-1].date())
+    )
+    print(
+        "  区间：%d%%（z=%.4f，经验残差 σ：LightGBM in-sample / Croston 重放）"
+        % (round(INTERVAL_LEVEL * 100), z_score(INTERVAL_LEVEL))
     )
     print("  幂等 token：%s" % token)
 

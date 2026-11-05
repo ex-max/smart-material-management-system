@@ -1428,6 +1428,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/forecast/curves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Forecast Curve
+         * @description 预测曲线（只读）：最新 SUCCESS/PARTIAL 批次的未来预测 + 近 N 天实际消耗。
+         */
+        get: operations["get_forecast_curve_api_v1_forecast_curves_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/demand-series-meta": {
         parameters: {
             query?: never;
@@ -1906,6 +1926,19 @@ export interface components {
             /** Message */
             message: string;
             data?: components["schemas"]["DictItemOut"] | null;
+            /**
+             * Trace Id
+             * @default
+             */
+            trace_id: string;
+        };
+        /** ApiResponse[ForecastCurveOut] */
+        ApiResponse_ForecastCurveOut_: {
+            /** Code */
+            code: number;
+            /** Message */
+            message: string;
+            data?: components["schemas"]["ForecastCurveOut"] | null;
             /**
              * Trace Id
              * @default
@@ -2847,6 +2880,38 @@ export interface components {
             /** Permissions */
             permissions?: string[];
         };
+        /**
+         * CurveForecastPoint
+         * @description 未来 horizon 步预测点（含 95% 预测区间）。
+         */
+        CurveForecastPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Horizon Step */
+            horizon_step: number;
+            /** Y Hat */
+            y_hat: string;
+            /** Y Lower */
+            y_lower: string | null;
+            /** Y Upper */
+            y_upper: string | null;
+        };
+        /**
+         * CurveHistoryPoint
+         * @description 近 N 天历史实际消耗（库存流水 OUTBOUND + STOCKTAKE_LOSS 按日聚合，只读）。
+         */
+        CurveHistoryPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Actual Qty */
+            actual_qty: string;
+        };
         /** DeliveryAcceptIn */
         DeliveryAcceptIn: {
             /** Warehouse Id */
@@ -3127,6 +3192,40 @@ export interface components {
             item_count: number;
             /** Active Count */
             active_count: number;
+        };
+        /**
+         * ForecastCurveOut
+         * @description 预测曲线（P4 可视化）：最新 SUCCESS/PARTIAL 批次 + 近 N 天实际消耗。
+         */
+        ForecastCurveOut: {
+            /** Material Id */
+            material_id: number;
+            /** Warehouse Id */
+            warehouse_id: number | null;
+            /** Series Key */
+            series_key: string;
+            /** Run Id */
+            run_id: number | null;
+            /** Run No */
+            run_no: string | null;
+            /** Run Status */
+            run_status: string | null;
+            /** Model Code */
+            model_code: string | null;
+            /** Model Version */
+            model_version: string | null;
+            /** Demand Class */
+            demand_class: string | null;
+            /** Interval Level */
+            interval_level: number;
+            /** Interval Z */
+            interval_z: number;
+            /** History Days */
+            history_days: number;
+            /** History */
+            history: components["schemas"]["CurveHistoryPoint"][];
+            /** Forecast */
+            forecast: components["schemas"]["CurveForecastPoint"][];
         };
         /** ForecastResultBulkIn */
         ForecastResultBulkIn: {
@@ -9618,6 +9717,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponse_ForecastRunOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_forecast_curve_api_v1_forecast_curves_get: {
+        parameters: {
+            query: {
+                material_id: number;
+                warehouse_id?: number | null;
+                history_days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_ForecastCurveOut_"];
                 };
             };
             /** @description Validation Error */

@@ -6905,6 +6905,84 @@
         }
       }
     },
+    "/api/v1/forecast/curves": {
+      "get": {
+        "tags": [
+          "预测"
+        ],
+        "summary": "Get Forecast Curve",
+        "description": "预测曲线（只读）：最新 SUCCESS/PARTIAL 批次的未来预测 + 近 N 天实际消耗。",
+        "operationId": "get_forecast_curve_api_v1_forecast_curves_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "material_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Material Id"
+            }
+          },
+          {
+            "name": "warehouse_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Warehouse Id"
+            }
+          },
+          {
+            "name": "history_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 365,
+              "minimum": 1,
+              "default": 90,
+              "title": "History Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ForecastCurveOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/demand-series-meta": {
       "get": {
         "tags": [
@@ -9244,6 +9322,39 @@
           "message"
         ],
         "title": "ApiResponse[DictItemOut]"
+      },
+      "ApiResponse_ForecastCurveOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ForecastCurveOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ApiResponse[ForecastCurveOut]"
       },
       "ApiResponse_ForecastRunOut_": {
         "properties": {
@@ -11721,6 +11832,79 @@
         "title": "CurrentUserOut",
         "description": "当前登录用户（登录 / /auth/me 返回）：在 UserOut 之上附带权限码，供前端按钮级鉴权。"
       },
+      "CurveForecastPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "horizon_step": {
+            "type": "integer",
+            "title": "Horizon Step"
+          },
+          "y_hat": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Y Hat"
+          },
+          "y_lower": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y Lower"
+          },
+          "y_upper": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y Upper"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "horizon_step",
+          "y_hat",
+          "y_lower",
+          "y_upper"
+        ],
+        "title": "CurveForecastPoint",
+        "description": "未来 horizon 步预测点（含 95% 预测区间）。"
+      },
+      "CurveHistoryPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "actual_qty": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Actual Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "actual_qty"
+        ],
+        "title": "CurveHistoryPoint",
+        "description": "近 N 天历史实际消耗（库存流水 OUTBOUND + STOCKTAKE_LOSS 按日聚合，只读）。"
+      },
       "DeliveryAcceptIn": {
         "properties": {
           "warehouse_id": {
@@ -12891,6 +13075,140 @@
           "active_count"
         ],
         "title": "DictTypeOut"
+      },
+      "ForecastCurveOut": {
+        "properties": {
+          "material_id": {
+            "type": "integer",
+            "title": "Material Id"
+          },
+          "warehouse_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warehouse Id"
+          },
+          "series_key": {
+            "type": "string",
+            "title": "Series Key"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "run_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run No"
+          },
+          "run_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Status"
+          },
+          "model_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Code"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "demand_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demand Class"
+          },
+          "interval_level": {
+            "type": "number",
+            "title": "Interval Level"
+          },
+          "interval_z": {
+            "type": "number",
+            "title": "Interval Z"
+          },
+          "history_days": {
+            "type": "integer",
+            "title": "History Days"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/CurveHistoryPoint"
+            },
+            "type": "array",
+            "title": "History"
+          },
+          "forecast": {
+            "items": {
+              "$ref": "#/components/schemas/CurveForecastPoint"
+            },
+            "type": "array",
+            "title": "Forecast"
+          }
+        },
+        "type": "object",
+        "required": [
+          "material_id",
+          "warehouse_id",
+          "series_key",
+          "run_id",
+          "run_no",
+          "run_status",
+          "model_code",
+          "model_version",
+          "demand_class",
+          "interval_level",
+          "interval_z",
+          "history_days",
+          "history",
+          "forecast"
+        ],
+        "title": "ForecastCurveOut",
+        "description": "预测曲线（P4 可视化）：最新 SUCCESS/PARTIAL 批次 + 近 N 天实际消耗。"
       },
       "ForecastResultBulkIn": {
         "properties": {

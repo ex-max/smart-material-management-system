@@ -3,6 +3,20 @@
 格式：`## YYYY-MM-DD · <模块>` + 改动 / 原因 / 验证 / 回滚
 （每个工作会话收尾时追加一条）
 
+## 2026-11-05 · P4 预测可视化（区间落库 + 预测曲线页）
+
+- **改动**：
+  - **ml**：新增 `ml/erp_ml/intervals.py`（`z_score`/`residual_std`/`prediction_bounds`/`interval_bounds_matrix`；95% z=1.959964，80% z=1.281552 仅方法说明）；`models.croston_residuals()`（Croston 状态重放逐日残差）；`gbm.LGBMForecaster.fit()` 保存 `train_residual_sigma_`（训练窗 in-sample 逐序列残差 std）；`sync_forecast.run_layered_forecast()` 返回逐序列 σ，`build_result_payloads()` 写 `y_lower/y_upper = clip(y_hat ± 1.96σ, ≥0)`；新增 ml 测试 8 条。
+  - **backend**：新增只读接口 `GET /forecast/curves?material_id=&warehouse_id=&history_days=`（`forecast:view`）：最新 SUCCESS/PARTIAL 批次结果 + 近 N 天实际消耗（`inventory_transaction` 的 OUTBOUND+STOCKTAKE_LOSS 按日聚合、逐日补零，**禁止写业务表**）；`schema.forecast` 增 `CurveHistoryPoint/CurveForecastPoint/ForecastCurveOut`，`repository.forecast.latest_curve`、`repository.inventory.consumption_rows`、`service.forecast.curves`；新增后端测试 3 条。
+  - **frontend**：`EChart.vue` 暴露 `getDataURL`；新增 `src/api/forecast.ts`、`src/views/ForecastView.vue`（物资×仓库×近 N 天；实际/预测/95% 阴影；明细表；导出 PNG）；`router` 增 `/forecast`、`MainLayout` 增「预测曲线」菜单（`forecast:view`）；重生成 `openapi.json` + `npm run gen:api`。
+  - **数据**：新批次 `FR-20261105-0002`（v3，start=2023-09-21，预测期 2026-09-20→2026-10-03，1092 条含区间）；`FR-20261105-0001`（v2，起点差一天）保留对比；旧 `FR-20260920-0001` 保留。
+- **原因**：`docs/progress.md` 的「下一步」P4 —— 让 ML 成果"看得见"；S2 曾记录 `y_lower/y_upper` 留空待定区间方法。用户已确认 5 项口径：新批次（非 UPDATE）/ 95% 落库 / 出库+盘亏口径 / 平移训练窗贴近今天 / 后端只读聚合接口。
+- **口径**：区间 = 经验残差法（LightGBM 训练窗 in-sample 残差逐序列 std；Croston 状态重放残差 std），`y_hat ± 1.96σ`、下限截断 0；历史实际值 = `OUTBOUND`+`STOCKTAKE_LOSS` 按 `occurred_at` UTC 日聚合（绝对值），`TRANSFER_OUT`/`INBOUND`/`REVERSAL` 不计入。
+- **依赖**：**未引入新依赖**；**未新增迁移**（`forecast_result.y_lower/y_upper` 列与区间 CHECK 早已存在）。
+- **验证**：`make verify` 绿且 **0 skip**（后端 **98 passed**、ml **75 passed**、前端 lint/build、迁移链 1599 行、不变量）。部署（legacy builder 重建 erp-api/erp-web，erp-postgres 未动）：smoke 5/5、容器 healthy、`alembic current=0009`；实机 `GET /forecast/curves`（物资1×仓1）run=`FR-20261105-0002`、history 2026-09-19 actual=7、forecast 14 天含 95% 区间，`/forecast` SPA 200。
+- **回滚**：`git revert <本次提交>`（无迁移）；镜像回滚 `docker tag erp-api:rollback-20260920-p4 erp-api:local` + 同 web + `docker compose up -d`（详见 CHANGELOG-ops）。批次数据如需清理：`DELETE FROM forecast_result WHERE run_id IN (2,3); DELETE FROM forecast_run WHERE id IN (2,3);`（保留旧批 1）。
+- **备注**：v2 批次因训练窗结束日与演示流水差一天被 v3 取代（保留对比）；区间宽度 horizon 内恒定（iid 残差近似），未做随步长扩张——已记 progress 已知坑。**服务器改动已记 /root/dsh/CHANGELOG-ops.md**。
+
 ## 2026-11-04 · P3 RBAC 前端（用户/角色/权限管理 + 菜单动态渲染）
 
 - **改动**：

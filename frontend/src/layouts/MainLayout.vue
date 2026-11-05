@@ -113,6 +113,9 @@ async function handleLogout() {
           </el-menu-item>
         </el-sub-menu>
 
+        <el-menu-item v-if="hasPerm('forecast:view')" index="forecast" :route="{ name: 'forecast' }">
+          <el-icon><DataLine /></el-icon><span>预测曲线</span>
+        </el-menu-item>
         <el-menu-item v-if="hasPerm('replenishment:view')" index="replenishment" :route="{ name: 'replenishment' }">
           <el-icon><TrendCharts /></el-icon><span>补货决策</span>
         </el-menu-item>

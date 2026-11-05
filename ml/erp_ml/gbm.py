@@ -47,10 +47,19 @@ class LGBMForecaster:
     def fit(self, history: np.ndarray, dates: pd.DatetimeIndex, origin: int) -> "LGBMForecaster":
         import lightgbm as lgb
 
-        X, y, _, _, static = build_panel_training(history, dates, origin, self.spec)
+        X, y, series_index, _, static = build_panel_training(history, dates, origin, self.spec)
         self.static_ = static
         dataset = lgb.Dataset(X, label=y, feature_name=self.spec.feature_names(), free_raw_data=True)
         self.booster_ = lgb.train(self.params, dataset, num_boost_round=self.num_boost_round)
+        # 训练窗 in-sample 残差（实际 − 拟合）的逐序列标准差，供预测区间估计（intervals.py）
+        fitted = np.clip(np.asarray(self.booster_.predict(X), dtype=float), 0.0, None)
+        residuals = np.asarray(y, dtype=float) - fitted
+        n_series = history.shape[1]
+        sigma = np.zeros(n_series, dtype=float)
+        for j in range(n_series):
+            rj = residuals[series_index == j]
+            sigma[j] = float(np.std(rj, ddof=1)) if rj.size > 1 else 0.0
+        self.train_residual_sigma_ = np.maximum(sigma, 1e-6)
         return self
 
     def forecast(

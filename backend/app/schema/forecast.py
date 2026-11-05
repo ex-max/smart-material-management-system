@@ -156,3 +156,39 @@ class IngestResult(BaseModel):
     inserted: int
     updated: int
     series_count: int
+
+
+class CurveHistoryPoint(BaseModel):
+    """近 N 天历史实际消耗（库存流水 OUTBOUND + STOCKTAKE_LOSS 按日聚合，只读）。"""
+
+    date: date
+    actual_qty: Decimal
+
+
+class CurveForecastPoint(BaseModel):
+    """未来 horizon 步预测点（含 95% 预测区间）。"""
+
+    date: date
+    horizon_step: int
+    y_hat: Decimal
+    y_lower: Decimal | None
+    y_upper: Decimal | None
+
+
+class ForecastCurveOut(BaseModel):
+    """预测曲线（P4 可视化）：最新 SUCCESS/PARTIAL 批次 + 近 N 天实际消耗。"""
+
+    material_id: int
+    warehouse_id: int | None
+    series_key: str
+    run_id: int | None
+    run_no: str | None
+    run_status: str | None
+    model_code: str | None
+    model_version: str | None
+    demand_class: str | None
+    interval_level: float
+    interval_z: float
+    history_days: int
+    history: list[CurveHistoryPoint]
+    forecast: list[CurveForecastPoint]

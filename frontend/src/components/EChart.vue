@@ -29,6 +29,13 @@ function resize(): void {
   chart.value?.resize()
 }
 
+/** 导出 PNG（默认 2 倍像素、白底），供论文/文档用图；未渲染时返回 undefined。 */
+function getDataURL(pixelRatio = 2): string | undefined {
+  return chart.value?.getDataURL({ type: 'png', pixelRatio, backgroundColor: '#fff' })
+}
+
+defineExpose({ getDataURL })
+
 onMounted(() => {
   render()
   window.addEventListener('resize', resize)

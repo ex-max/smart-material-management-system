@@ -128,3 +128,26 @@ def test_build_model_specs_and_policy_contract():
     assert policy["service_level_type"] == "CSL"
     assert 0 < policy["service_level"] < 1
     assert policy["material_id"] is None and policy["warehouse_id"] is None
+
+
+def test_build_result_payloads_with_95pct_intervals():
+    horizon = 2
+    predictions = np.array([[5.0, 0.0], [0.0, 0.4]])
+    dates = pd.date_range("2026-09-20", periods=horizon, freq="D")
+    sigmas = np.array([2.0, 0.5])
+    rows = build_result_payloads(_meta(), predictions, dates, horizon, MODEL_VERSION, sigmas=sigmas)
+    assert len(rows) == 4
+    # 序列 1 step1：y_hat=5，σ=2 -> 95% 区间 [1.08, 8.92]
+    first = rows[0]
+    assert first["y_hat"] == 5.0
+    assert abs(first["y_lower"] - 1.08) < 1e-3
+    assert abs(first["y_upper"] - 8.92) < 1e-3
+    assert first["y_lower"] <= first["y_hat"] <= first["y_upper"]
+    # 序列 2 step1：y_hat=0 -> 下限截断 0，上限 > 0
+    zero = rows[2]
+    assert zero["y_hat"] == 0.0
+    assert zero["y_lower"] == 0.0
+    assert zero["y_upper"] > 0.0
+    # 未传 sigmas 时不写区间（兼容旧行为）
+    plain = build_result_payloads(_meta(), predictions, dates, horizon, MODEL_VERSION)
+    assert all("y_lower" not in row for row in plain)

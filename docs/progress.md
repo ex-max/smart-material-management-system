@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- **里程碑**：**P3 RBAC 前端完成**（方案「必做」项：用户/角色/权限前端管理 + 菜单按权限码动态渲染。后端补齐：重置密码、角色 CRUD、保存角色权限、users/roles 全部补 `response_model`、用户列表 keyword 搜索；前端：/admin/users、/admin/roles、/admin/permissions 三页 + 路由 `meta.permission` + 路由守卫校验 + 侧边栏按 `hasPerm` 显隐；权限树按 code 前缀分组；`make verify` 绿且 **0 skip**，后端 **95 passed**）。
-- **更新时间**：2026-11-04
+- **里程碑**：**P4 预测可视化完成**（后端预测区间 95% 落库 `y_lower/y_upper` + `GET /forecast/curves` 只读聚合；前端 `/forecast` 预测曲线页：实际消耗 / 预测 / 95% 阴影带 + 导出 PNG；演示批次 `FR-20261105-0002`（预测期 2026-09-20→10-03）；`make verify` 绿且 **0 skip**，后端 **98 passed**、ml **75 passed**）。
+- **更新时间**：2026-11-05
 
 ## 已完成
 
@@ -75,13 +75,21 @@
   - **菜单动态渲染**：`router/index.ts` 全部业务路由加 `meta.permission`（material/purchase/inventory/replenishment/operation/dict/task/attachment/user/role:view），`beforeEach` 加路由级权限校验（无权限跳回概览）；新增 /admin/* 三路由；默认路由改 `home`（概览对所有登录用户可见）；`MainLayout.vue` 主数据/采购/库存子菜单与补货决策菜单项按 `hasPerm` 显隐，系统管理子菜单新增用户/角色/权限管理入口。
   - **收尾**：`make verify` 绿且 0 skip（后端 95、ml 67、前端 lint/build）；实机部署（legacy builder 重建 api/web）：建角色→保存权限→读取→删除闭环 200、keyword 搜索正常、/admin/* 三页 SPA 200、smoke 5/5；**未引入新依赖、未新增数据库迁移**。
 
+- [x] **P4 预测可视化（本会话垂直切片）**：让 ML 成果"看得见"——预测区间落库 + 前端预测曲线页。
+  - **ml 区间**：新增 `ml/erp_ml/intervals.py`（`z_score`/`residual_std`/`prediction_bounds`/`interval_bounds_matrix`；95% z=1.959964，80% z=1.281552 仅方法说明不落库）；`models.croston_residuals`（Croston 状态重放逐日残差）；`gbm.LGBMForecaster.fit` 保存 `train_residual_sigma_`（训练窗 in-sample 逐序列残差 std）；`sync_forecast.run_layered_forecast` 返回逐序列 σ、`build_result_payloads` 写 `y_lower/y_upper`（y_hat ± 1.96σ，下限截断 0，保证 CHECK `y_lower<=y_hat<=y_upper`）。新增 ml 测试 8 条（`test_intervals.py` 5、`test_models` 1、`test_sync_forecast` 1、`test_gbm` 1）。
+  - **后端**：新增 `GET /forecast/curves?material_id=&warehouse_id=&history_days=`（`forecast:view`，**只读**）：最新 SUCCESS/PARTIAL 批次结果 + 近 N 天实际消耗（`inventory_transaction` 的 `OUTBOUND`+`STOCKTAKE_LOSS` 按日取绝对值求和、逐日补零），返回 `{run/model/interval/history/forecast}`；`schema/repository/service` 分层落地；新增后端测试 3 条（聚合口径含调拨/入库/窗口外排除、无批次空态、匿名 401/越权 403/管理员 200）。
+  - **前端**：`EChart.vue` 暴露 `getDataURL`（2x 白底 PNG，论文用图）；新增 `src/api/forecast.ts`；新增 `ForecastView.vue`（物资/仓库/近 N 天选择；实际消耗实线 + 预测虚线 + 95% 阴影带；预测明细表；导出图片）；`/forecast` 路由 + 侧边栏「预测曲线」（`forecast:view`）；重跑 `npm run gen:api`（ForecastCurveOut/CurveHistoryPoint/CurveForecastPoint）。
+  - **数据批次**：新批次 `FR-20261105-0002`（token v3，start=2023-09-21）：预测期 **2026-09-20 → 2026-10-03**、1092 条结果含 95% 区间；`FR-20261105-0001`（v2，训练窗结束 2026-09-18）保留作对比；旧 `FR-20260920-0001` 原样保留。**采用新批次而非 UPDATE**：后端 `add_results` 仅 RUNNING 可写、`forecast_result` 追加写语义、保留旧批可对比。
+  - **部署**：legacy builder 重建 `erp-api`/`erp-web`（`erp-postgres` 未动），smoke 5/5；实机 `GET /forecast/curves`（物资1×仓1）返回历史 2026-09-19 实际 7、未来 14 天含区间；`/forecast` SPA 200。
+  - **未引入新依赖、未新增迁移**（`y_lower/y_upper` 列与 API 区间校验/`ForecastResultOut` 字段早已存在）。
+
 ## 进行中
 
 - [ ] 无
 
 ## 下一步（只做这一条）
 
-**P4 预测曲线页**：新增前端「预测曲线」页面（/forecast 菜单，`forecast:view`）：基于既有 `GET /forecast-runs`/`GET /forecast-results?run_id=...` 展示某批次各序列的未来 14 天预测曲线（前端 ECharts 折线，复用 `EChart.vue`）；可选给 `forecast_result` 落库 `y_lower/y_upper`（S2 记录 `y_lower/y_upper` 留空待定区间方法，属 ML 相关改动，需加载 `forecast-experiment` 技能并确认区间口径后补迁移 + 回填）。
+**P5 Excel 导出**：把概览/列表页的 CSV 导出升级为 .xlsx（如确需新增前端依赖，先说明理由并记 CHANGELOG；不新增后端接口，沿用浏览器端生成）。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -148,7 +156,7 @@
 | S2 序列口径/对应 | 不建「800 合成 SKU → 26 业务物资」手工对应表；用生成器业务目录模式（`catalog_source="db"`，只读主数据）按业务 `material_id × warehouse_id` 生成需求；`series_key = material_id:warehouse_id`（与后端 `ForecastService.series_key_for` 一致） | S2 记录 |
 | S2 seed/触发选择 | 需求生成 seed=14（在 1–80 中筛选，使 10 个有结存的物资×仓组合产生 3 条触发，覆盖物资 9/21）；seed 是实验参数而非业务规则，随 token 记录、可复现 | S2 记录 |
 | S2 幂等 | 批次幂等在脚本侧：稳定 token 写入 `forecast_run.remark`，命中即复用（不新建批次/不重复结果）；`demand-series-meta` 为 upsert，model-registry/policy 按编码跳过。强制新批次可用 `--batch-version`（或改 SEED/HORIZON） | S2 记录 |
-| S2 预测区间 | 本批 `forecast_result.y_lower/y_upper` 留空（前端决策页不依赖；区间方法待定，避免过度声称） | 待后续切片 |
+| S2 预测区间 | P4 已解决：经验残差法落库 95% 区间（见下方 P4 行）；旧批 `FR-20260920-0001` 仍为空，新批 `FR-20261105-0002` 起有值 | 已解决（2026-11-05） |
 | S2 决策页模型名 | 建议表不单列模型名，模型名在建议详情 `reason`（`model=lightgbm_demand`）；若要列表列展示，需后端在建议出参补 `model_code` 并重跑 `gen:api` + 重建前端 | 待后续切片 |
 | S2 策略 override 未生效 | 后端决策服务始终按预测公式算 SS/ROP，未读取 `safety_stock_override`/`rop_override`（`strategy=FIXED` 同此）；本次 `strategy=FORECAST` 不受影响 | 既有（M6） |
 | S2 运行前置 | `make sync-forecast` 需后端已起（默认 8000；部署栈 `BASE=http://127.0.0.1:8080`）且 `127.0.0.1:5433` 业务库可读（只读 `material`/`warehouse`） | S2 记录 |
@@ -190,6 +198,12 @@
 | P2 操作日志筛选 | 用户筛选为「用户ID」数字输入（后端仅支持 `user_id` 过滤，`/users` 无 response_model 不产出类型）；如需用户名下拉需先给 `/users` 补 response_model（P3 用户页一并做） | P2 记录 |
 | P2 附件页面下载 | 下载走 axios blob + 浏览器保存；容器 nginx `client_max_body_size 12m` 已配，宿主 nginx 站点未改（S5 已知坑仍待确认） | P2 记录 |
 | P2 buildx 沙箱 | 本机 `make up` 的 buildx 客户端写 `/root/.docker/buildx/activity` 被 DSH 沙箱拒绝；部署改用 `DOCKER_BUILDKIT=0 docker compose build`（legacy builder）绕过，已记入 CHANGELOG-ops | P2 记录 |
+| P4 区间方法 | 经验残差法：LightGBM 用训练窗 in-sample 残差逐序列 std；Croston 用状态重放残差 std；`y_hat ± 1.96σ`、下限截断 0；落库 95%，80% 仅方法说明（表只有一对区间列）。区间宽度在 horizon 内恒定（iid 残差近似），未随步长扩张 | P4 记录（可选改进） |
+| P4 历史实际值口径 | `GET /forecast/curves` 历史段 = `OUTBOUND`+`STOCKTAKE_LOSS` 按 `occurred_at` 的 UTC 日期聚合（未转 Asia/Shanghai 日界；演示无跨日问题）；红冲 `REVERSAL` 未净额化；`TRANSFER_OUT`/`INBOUND` 不计入 | P4 记录 |
+| P4 批次对齐 | token 不含 `start`：改训练窗必须 bump `--batch-version`，否则命中旧批跳过写入；v2（`FR-20261105-0001`）训练窗结束 2026-09-18、预测起点 09-19，与演示流水（09-19）差一天错过历史窗；v3（`FR-20261105-0002`，start=2023-09-21）为演示主批次，v2 保留对比 | P4 记录 |
+| P4 曲线取批次 | 曲线接口按 (material, warehouse) 取 `id` 最大的 SUCCESS/PARTIAL 批次；同序列多批次只显示最新（旧批仍可经 `/forecast-runs/{id}/results` 查） | P4 记录 |
+| P4 导出图片 | 前端导出为 PNG（ECharts `getDataURL`，2x、白底），非 SVG/PDF；后端无导出接口 | P4 记录 |
+| P4 部署沙箱 | `server-health.sh` 的 `nginx -t` 在本会话沙箱下因写 `/www`（pid 文件）被拒 → 唯一 FAIL，改动前后完全一致，与本切片无关（未改 nginx） | P4 记录 |
 
 ## 对账状态（库存相关改动必填）
 
@@ -218,3 +232,4 @@
 | 2026-09-20 | S6 概览 Dashboard：仅通过 `materials`/`warehouses`/`inventory`/`inventory/transactions`/`stock-alerts`/采购与库存各 list/`replenishment-suggestions` **只读**接口拉取并在浏览器聚合；未新增后端接口、不写任何表 | 不涉及结存变更；`reconcile` 口径不变；前端只读 API |
 | 2026-11-04 | P2 前端系统管理：操作日志只读 API、字典/定时任务/附件走各自系统接口；后端小修只改 `attachment` 两列可空（迁移 0009），**未触碰** `inventory`/`inventory_batch`/`inventory_transaction`/采购与预测表；前端只读 API + 附件上传下载（写自身附件目录） | 不涉及结存变更；`reconcile` 口径不变；迁移可逆（upgrade→downgrade -1→upgrade 验证过）；真库 `alembic current=0009` |
 | 2026-11-04 | P3 RBAC：后端只读写 `users/roles/permissions/user_role/role_permission` 五张权限表（角色 CRUD/软删、权限分配、重置密码）；前端仅通过 /users、/roles、/permissions API 操作；**未触碰** `inventory`/`inventory_batch`/`inventory_transaction`/采购/预测/系统表 | 不涉及结存变更；`reconcile` 口径不变；无新迁移（权限表为 M1-c 0001 已建）；真库 `alembic current=0009` 不变 |
+| 2026-11-05 | P4 预测可视化：`GET /forecast/curves` **只读**聚合 `inventory_transaction`（OUTBOUND+STOCKTAKE_LOSS）与 `forecast_result`；新批次 sync 只写 `forecast_*`/`replenishment_*`；**未触碰** `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；`reconcile` 口径不变；后端 98 passed；真库 `alembic current=0009` 不变 |

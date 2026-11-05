@@ -150,6 +150,35 @@ def _croston_forecast(train: np.ndarray, horizon: int, alpha: float = 0.1, beta:
     return np.repeat(z_hat / q_hat, horizon)
 
 
+def croston_residuals(train: np.ndarray, alpha: float = 0.1, beta: float = 0.1) -> np.ndarray:
+    """Croston 状态重放：逐日残差 = 实际 − 截至当日（t 之前）的预测（z_hat / q_hat）。
+
+    与 _croston_forecast 的更新规则一致，仅用于**训练窗内**经验残差 σ 估计，
+    供预测区间（intervals.prediction_bounds）使用；无状态时预测记 0。
+    """
+    train = np.asarray(train, dtype=float)
+    z_hat: float | None = None
+    q_hat: float | None = None
+    last_nonzero: int | None = None
+    residuals = np.zeros(train.size, dtype=float)
+    for t, value in enumerate(train):
+        if z_hat is None or q_hat is None or q_hat <= 0:
+            residuals[t] = float(value)
+        else:
+            residuals[t] = float(value) - z_hat / q_hat
+        if value <= 0:
+            continue
+        interval = float(t - last_nonzero) if last_nonzero is not None else 1.0
+        if z_hat is None:
+            z_hat = float(value)
+            q_hat = interval
+        else:
+            z_hat = z_hat + alpha * (float(value) - z_hat)
+            q_hat = q_hat + beta * (interval - q_hat)
+        last_nonzero = t
+    return residuals
+
+
 def _tsb_forecast(train: np.ndarray, horizon: int, alpha: float = 0.2, beta: float = 0.2) -> np.ndarray:
     """Teunter–Syntetos–Babai：每期更新发生概率，需求量只在发生时更新。"""
     train = np.asarray(train, dtype=float)

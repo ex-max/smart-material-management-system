@@ -4,6 +4,7 @@ import numpy as np
 
 from erp_ml.models import (
     comparison_model,
+    croston_residuals,
     extended_model_codes,
     forecast,
     model_mapping,
@@ -53,3 +54,15 @@ def test_segment_model_mapping():
     assert model_mapping()["ERRATIC"] == {"primary": "lightgbm", "comparison": "arima"}
     # LightGBM 是面板级模型，不在单序列代码列表里
     assert "lightgbm" not in extended_model_codes()
+
+
+def test_croston_residuals_replay_state():
+    train = np.zeros(60)
+    train[::6] = 4.0
+    resid = croston_residuals(train)
+    assert resid.shape == train.shape
+    assert np.isfinite(resid).all()
+    # 非零需求日之后残差变小，零需求日残差接近 -预测均值
+    assert np.std(resid) > 0.0
+    # 全零序列：无状态，残差恒为 0
+    assert np.all(croston_residuals(np.zeros(20)) == 0.0)

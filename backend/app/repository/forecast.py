@@ -146,6 +146,46 @@ class ForecastResultRepo:
         )
         return list(rows), int(total)
 
+    def latest_curve(self, material_id: int, warehouse_id: int | None):
+        """取该物资×仓库在最新 SUCCESS/PARTIAL 批次中的全部结果（按预测日期升序）。
+
+        返回 (run, rows)；无任何结果时返回 (None, [])。只读，供预测曲线接口聚合。
+        """
+        pair = (
+            ForecastResult.warehouse_id.is_(None)
+            if warehouse_id is None
+            else ForecastResult.warehouse_id == warehouse_id
+        )
+        run = self.db.execute(
+            select(ForecastRun)
+            .join(ForecastResult, ForecastResult.run_id == ForecastRun.id)
+            .where(
+                ForecastResult.material_id == material_id,
+                pair,
+                ForecastRun.status.in_(("SUCCESS", "PARTIAL")),
+                ForecastRun.deleted_at.is_(None),
+            )
+            .group_by(ForecastRun.id)
+            .order_by(ForecastRun.id.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if run is None:
+            return None, []
+        rows = (
+            self.db.execute(
+                select(ForecastResult)
+                .where(
+                    ForecastResult.run_id == run.id,
+                    ForecastResult.material_id == material_id,
+                    pair,
+                )
+                .order_by(ForecastResult.forecast_date)
+            )
+            .scalars()
+            .all()
+        )
+        return run, list(rows)
+
     def distinct_series_count(self, run_id: int) -> int:
         stmt = select(func.count(func.distinct(ForecastResult.series_key))).where(ForecastResult.run_id == run_id)
         return int(self.db.execute(stmt).scalar_one())
