@@ -3,6 +3,18 @@
 格式：`## YYYY-MM-DD · <模块>` + 改动 / 原因 / 验证 / 回滚
 （每个工作会话收尾时追加一条）
 
+## 2026-11-04 · P3 RBAC 前端（用户/角色/权限管理 + 菜单动态渲染）
+
+- **改动**：
+  - **后端补齐**（用户确认「补齐后端接口」）：新增 `POST /users/{id}/reset-password`、`GET /users` 增 keyword 模糊过滤；角色 CRUD（`POST/GET/{id}/PUT/DELETE /roles`，软删同时清理 user_role/role_permission 关联，内置角色禁删禁停用）+ `PUT|GET /roles/{id}/permissions`（全量替换）；users/roles 接口全部补 `response_model`（OpenAPI 产出 UserOut/RoleOut/PermissionOut）；`service/role.py` 新增 RoleService（code 唯一 409、权限 id 校验 400）；`UserService._sync_roles` 改为全量替换语义（空列表清空）。
+  - **前端三页**：/admin/users（列表/新增/编辑/启停/重置密码/分配角色弹窗）、/admin/roles（列表/新增/编辑/删除 + 权限树按 code 前缀分组勾选保存）、/admin/permissions（只读按前缀分组）；新增 `src/api/admin.ts`；菜单动态渲染：路由 `meta.permission` + `beforeEach` 权限拦截 + 侧边栏按 `hasPerm` 显隐（主数据/采购/库存/决策/系统管理全量覆盖）。
+  - 重跑 `npm run gen:api` 同步类型；新增 `tests/test_roles.py` 12 条。
+- **原因**：docs/progress.md 的「下一步」P3 —— 方案「必做」项：用户/角色/权限前端管理 + 菜单按权限动态渲染（此前菜单写死、仅按钮置灰）。勘察确认后端缺重置密码/角色 CRUD/保存权限接口且 users/roles 无 response_model，经用户确认补齐（含新增 pytest）。
+- **依赖**：**未引入新依赖**（ECharts/权限树勾选用 Element Plus 既有组件）。
+- **验证**：make verify 绿且 **0 skip**（后端 **95 passed** = 82 + 13、ml 67、前端 lint/build、迁移链 1599 行、不变量）。部署（legacy builder 重建 erp-api/erp-web，erp-postgres 未动）：smoke 5/5；实机探针角色 建→配权限→读→删 闭环 200、keyword 搜索、/admin/* 三页 SPA 200；health 前后 29/1/3 一致。**未新增迁移**（权限表 0001 已建）。
+- **回滚**：git revert <本次提交>（本切片无迁移）；镜像回滚 erp-api/erp-web 重建（legacy builder）即可，详见 CHANGELOG-ops。
+- **备注**：权限分组为前端按 code 前缀（后端无 group 字段）；`POST /users/{id}/roles` 与 `PUT /roles/{id}/permissions` 为全量替换语义。**服务器改动已记 /root/dsh/CHANGELOG-ops.md**。
+
 ## 2026-09-18 · 数据库设计（M1-a）
 
 - **改动**：新增 `docs/db-schema.md` —— 主数据(6) + 采购(6) + 库存作业(9) 共 **21 张表**的字段/类型/约束/索引/关系、通用约定（主键/审计/类型/状态机/单号/追溯）、E-R 图、领域不变量落点与接口契约；同步更新 `docs/progress.md`（已完成/进行中/下一步/已知坑/对账状态）。

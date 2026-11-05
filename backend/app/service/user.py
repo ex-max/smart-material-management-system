@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import BadRequest, Conflict, NotFound
 from app.core.security import hash_password
+from app.model.base import utcnow
 from app.model.user import User, UserRole
 from app.repository.user import RoleRepository, UserRepository
 from app.schema.user import UserCreate, UserUpdate
@@ -13,9 +14,9 @@ class UserService:
         self.users = UserRepository(db)
         self.roles = RoleRepository(db)
 
-    def list_users(self, page: int, page_size: int) -> tuple[list[User], int]:
+    def list_users(self, page: int, page_size: int, keyword: str | None = None) -> tuple[list[User], int]:
         offset = (page - 1) * page_size
-        return self.users.list_users(offset, page_size)
+        return self.users.list_users(offset, page_size, keyword=keyword)
 
     def get(self, user_id: int) -> User:
         user = self.users.get(user_id)
@@ -61,13 +62,23 @@ class UserService:
         self.db.refresh(user)
         return user
 
+    def reset_password(self, user_id: int, new_password: str) -> User:
+        """重置密码：更新密码哈希与修改时间（不校验旧密码，由有权限的管理员操作）。"""
+        user = self.get(user_id)
+        user.password_hash = hash_password(new_password)
+        user.pwd_updated_at = utcnow()
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+
     def _sync_roles(self, user: User, role_ids: list[int]) -> None:
-        if not role_ids:
-            return
+        """全量替换角色：不在列表中的移除、缺失的添加；空列表即清空（前端弹窗提交完整列表）。"""
         found = [self.roles.get(rid) for rid in role_ids]
         if any(r is None for r in found):
             raise BadRequest("存在无效的角色 id")
         existing = {ur.role_id for ur in self.db.query(UserRole).filter(UserRole.user_id == user.id).all()}
-        for rid in role_ids:
-            if rid not in existing:
-                self.db.add(UserRole(user_id=user.id, role_id=rid))
+        target = set(role_ids)
+        for rid in existing - target:
+            self.db.query(UserRole).filter(UserRole.user_id == user.id, UserRole.role_id == rid).delete()
+        for rid in target - existing:
+            self.db.add(UserRole(user_id=user.id, role_id=rid))

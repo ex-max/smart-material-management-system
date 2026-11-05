@@ -8,8 +8,10 @@ import {
   Goods,
   Grid,
   HomeFilled,
+  Key,
   List,
   Location,
+  UserFilled,
   Menu as MenuIcon,
   OfficeBuilding,
   Paperclip,
@@ -27,7 +29,7 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
-const { user, logout, hasAnyPerm } = useAuth()
+const { user, logout, hasPerm, hasAnyPerm } = useAuth()
 
 async function handleLogout() {
   try {
@@ -45,7 +47,7 @@ async function handleLogout() {
     <el-aside width="220px" class="aside">
       <div class="brand">智能物资管理</div>
       <el-menu :default-active="String($route.name)" router class="menu">
-        <el-sub-menu index="master">
+        <el-sub-menu v-if="hasAnyPerm(['material:view'])" index="master">
           <template #title>
             <el-icon><Grid /></el-icon>
             <span>主数据</span>
@@ -70,7 +72,7 @@ async function handleLogout() {
           </el-menu-item>
         </el-sub-menu>
 
-        <el-sub-menu index="purchase">
+        <el-sub-menu v-if="hasAnyPerm(['purchase:view'])" index="purchase">
           <template #title>
             <el-icon><ShoppingCart /></el-icon>
             <span>采购管理</span>
@@ -86,7 +88,7 @@ async function handleLogout() {
           </el-menu-item>
         </el-sub-menu>
 
-        <el-sub-menu index="inventory">
+        <el-sub-menu v-if="hasAnyPerm(['inventory:view'])" index="inventory">
           <template #title>
             <el-icon><Box /></el-icon>
             <span>库存管理</span>
@@ -111,7 +113,7 @@ async function handleLogout() {
           </el-menu-item>
         </el-sub-menu>
 
-        <el-menu-item index="replenishment" :route="{ name: 'replenishment' }">
+        <el-menu-item v-if="hasPerm('replenishment:view')" index="replenishment" :route="{ name: 'replenishment' }">
           <el-icon><TrendCharts /></el-icon><span>补货决策</span>
         </el-menu-item>
         <el-menu-item index="home" :route="{ name: 'home' }">
@@ -119,13 +121,22 @@ async function handleLogout() {
         </el-menu-item>
 
         <el-sub-menu
-          v-if="hasAnyPerm(['operation:view', 'dict:view', 'task:view', 'attachment:view'])"
+          v-if="hasAnyPerm(['operation:view', 'dict:view', 'task:view', 'attachment:view', 'user:view', 'role:view'])"
           index="system"
         >
           <template #title>
             <el-icon><Setting /></el-icon>
             <span>系统管理</span>
           </template>
+          <el-menu-item v-if="hasAnyPerm(['user:view'])" index="admin-users" :route="{ name: 'admin-users' }">
+            <el-icon><User /></el-icon><span>用户管理</span>
+          </el-menu-item>
+          <el-menu-item v-if="hasAnyPerm(['role:view'])" index="admin-roles" :route="{ name: 'admin-roles' }">
+            <el-icon><UserFilled /></el-icon><span>角色管理</span>
+          </el-menu-item>
+          <el-menu-item v-if="hasAnyPerm(['role:view'])" index="admin-permissions" :route="{ name: 'admin-permissions' }">
+            <el-icon><Key /></el-icon><span>权限管理</span>
+          </el-menu-item>
           <el-menu-item v-if="hasAnyPerm(['operation:view'])" index="system-operation-logs" :route="{ name: 'system-operation-logs' }">
             <el-icon><List /></el-icon><span>操作日志</span>
           </el-menu-item>

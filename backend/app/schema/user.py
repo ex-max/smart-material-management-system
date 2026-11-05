@@ -31,6 +31,30 @@ class AssignRolesIn(BaseModel):
     role_ids: list[int] = Field(default_factory=list)
 
 
+class ResetPasswordIn(BaseModel):
+    password: str = Field(min_length=6, max_length=128)
+
+
+class RoleCreate(BaseModel):
+    code: str = Field(min_length=2, max_length=32)
+    name: str = Field(min_length=2, max_length=64)
+    description: str | None = Field(default=None, max_length=255)
+    sort_no: int = Field(default=0)
+    status: str = Field(default="ACTIVE", pattern="^(ACTIVE|INACTIVE)$")
+    permission_ids: list[int] = Field(default_factory=list)
+
+
+class RoleUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=64)
+    description: str | None = Field(default=None, max_length=255)
+    sort_no: int | None = Field(default=None)
+    status: str | None = Field(default=None, pattern="^(ACTIVE|INACTIVE)$")
+
+
+class RolePermissionAssignIn(BaseModel):
+    permission_ids: list[int] = Field(default_factory=list)
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -54,6 +78,7 @@ class RoleOut(BaseModel):
     description: str | None
     is_builtin: bool
     status: str
+    sort_no: int = 0
 
 
 class CurrentUserOut(UserOut):

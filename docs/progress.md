@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**P2 前端系统管理完成**（S3/S5 后端接口补成前端页面：「系统管理」子菜单四页 —— 操作日志 / 数据字典 / 定时任务 / 附件管理，按权限码显隐；重跑 `gen:api` 补齐 OperationLog/Dict/ScheduledTaskLog/Attachment 类型；附件 `biz_type/biz_id` 改可空并新增迁移 `0009`；`make verify` 绿且 **0 skip**）。
+- **里程碑**：**P3 RBAC 前端完成**（方案「必做」项：用户/角色/权限前端管理 + 菜单按权限码动态渲染。后端补齐：重置密码、角色 CRUD、保存角色权限、users/roles 全部补 `response_model`、用户列表 keyword 搜索；前端：/admin/users、/admin/roles、/admin/permissions 三页 + 路由 `meta.permission` + 路由守卫校验 + 侧边栏按 `hasPerm` 显隐；权限树按 code 前缀分组；`make verify` 绿且 **0 skip**，后端 **95 passed**）。
 - **更新时间**：2026-11-04
 
 ## 已完成
@@ -66,7 +66,14 @@
   - **附件管理** `/system/attachments`：上传（multipart，`biz_type/biz_id` **可选**，带进度条）、列表（业务类型/ID 筛选）、下载（blob + Content-Disposition 文件名）、软删（`attachment:view/manage`）。
   - **后端小修**：迁移 `0009_attachment_biz_nullable`（`attachment.biz_type/biz_id` 改可空，完整 downgrade）+ `api/v1/system.py` 的 `Form(...)` 改 `Form(None)` + `schema/system.py` 的 `AttachmentOut` 字段可空 + `service/system.py` `save()` 签名可选；新增测试 1 条（无 biz 上传成功），后端 **83 passed**。
   - **基础设施**：`http.ts` 新增 `api.upload`（FormData + `onUploadProgress`）与 `api.download`（blob）；`document.ts`/`DocumentView.vue` 的 `DocFilter` 扩展 `input`/`datetime-range` 类型（值拆为 start_time/end_time，向后兼容）；新增 `src/api/system.ts`（四组接口封装，类型全部来自 OpenAPI）；`MainLayout.vue`/`router/index.ts` 增「系统管理」子菜单（按 `operation:view`/`dict:view`/`task:view`/`attachment:view` 显隐）与 `/system/*` 路由。
-  - **gen:api**：本地导出 OpenAPI（README 官方方式）→ 重新生成 `frontend/openapi.json` + `src/api/schema.d.ts`，`OperationLogOut/DictTypeOut/DictItemOut/ScheduledTaskLogOut/AttachmentOut` 及其 DTO 全部就位。**未新增后端接口**（除上述用户确认的必要小修）、**未引入新依赖**。`make verify` 绿且 0 skip（后端 83、ml 67、前端 lint/build）；实机部署（重建 api/web）验证四接口 + 附件无 biz 上传/下载/软删 + task finish 409 正常。
+
+- [x] **P3 RBAC 前端（本会话垂直切片）**：方案「必做」项 —— 用户 / 角色 / 权限前端管理 + 菜单按权限码动态渲染（勘察确认后端缺口后，用户确认「补齐后端接口（推荐）」+「前端按 code 前缀分组」）：
+  - **后端补齐**：`schema/user.py` 新增 `ResetPasswordIn/RoleCreate/RoleUpdate/RolePermissionAssignIn`（RoleOut 补 `sort_no`）；`repository/user.py` RoleRepository 增 add/save/soft_delete（软删同时清理 user_role 与 role_permission，避免残留影响权限并集）/permission_ids/replace_permissions；新增 `service/role.py`（RoleService：角色 CRUD + 保存权限，builtin 保护——内置角色禁删禁停用，code 唯一冲突 409、权限 id 存在性 400）；`service/user.py` 增 `reset_password`（hash + pwd_updated_at）且 `_sync_roles` 改为**全量替换语义**（空列表即清空，前端弹窗提交完整列表）。
+  - **后端 API**：`api/v1/users.py` 全部补 `response_model`（ApiResponse/PageOut）+ 新增 `POST /users/{id}/reset-password`（`user:update`）+ `GET /users` 增 `keyword` 过滤；`api/v1/roles.py` 全部补 `response_model` + 角色 CRUD（`POST/GET/{id}/PUT/DELETE /roles`，`role:manage`）+ `PUT|GET /roles/{id}/permissions`（全量替换，`role:manage`/view）。
+  - **测试**：新增 `tests/test_roles.py` **12 条**（角色 CRUD 往返、code 冲突 409、builtin 禁删/禁停用、保存/清空权限、无效权限 400、viewer 读可写拒 403、匿名 401、重置密码后可登录旧密码失效、无权限重置 403、分配角色全量替换/清空）；后端全量 **95 passed**（82→95）。
+  - **前端**：重生成 openapi.json + `npm run gen:api` 同步类型（UserOut/RoleOut/PermissionOut/所涉 DTO 就位）；新增 `src/api/admin.ts`（用户/角色/权限接口封装）；新增三页 —— `UserManageView.vue`（列表/新增/编辑/启停/重置密码/分配角色弹窗，超管不可停用）、`RoleManageView.vue`（列表/新增/编辑/删除，内置角色禁删 + 权限树**按 code 前缀分组**勾选保存）、`PermissionManageView.vue`（只读按前缀分组卡片）。
+  - **菜单动态渲染**：`router/index.ts` 全部业务路由加 `meta.permission`（material/purchase/inventory/replenishment/operation/dict/task/attachment/user/role:view），`beforeEach` 加路由级权限校验（无权限跳回概览）；新增 /admin/* 三路由；默认路由改 `home`（概览对所有登录用户可见）；`MainLayout.vue` 主数据/采购/库存子菜单与补货决策菜单项按 `hasPerm` 显隐，系统管理子菜单新增用户/角色/权限管理入口。
+  - **收尾**：`make verify` 绿且 0 skip（后端 95、ml 67、前端 lint/build）；实机部署（legacy builder 重建 api/web）：建角色→保存权限→读取→删除闭环 200、keyword 搜索正常、/admin/* 三页 SPA 200、smoke 5/5；**未引入新依赖、未新增数据库迁移**。
 
 ## 进行中
 
@@ -74,7 +81,7 @@
 
 ## 下一步（只做这一条）
 
-**P3 用户 / 角色页**：后端 `/users`、`/roles`、`/permissions` 已就绪（M1-c，`user:view` 等权限码）；新增前端用户管理页（列表/新增/编辑/启停用/分配角色，`POST /users/{id}/roles`）与角色权限页（`/roles/{id}/permissions`，留 P3 确认接口现状）；用户列表无 `response_model`，OpenAPI 不产出 `UserOut`（M8 已知坑），需决定补 `response_model` 还是前端用 `CurrentUserOut` 字段子集。
+**P4 预测曲线页**：新增前端「预测曲线」页面（/forecast 菜单，`forecast:view`）：基于既有 `GET /forecast-runs`/`GET /forecast-results?run_id=...` 展示某批次各序列的未来 14 天预测曲线（前端 ECharts 折线，复用 `EChart.vue`）；可选给 `forecast_result` 落库 `y_lower/y_upper`（S2 记录 `y_lower/y_upper` 留空待定区间方法，属 ML 相关改动，需加载 `forecast-experiment` 技能并确认区间口径后补迁移 + 回填）。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -171,6 +178,13 @@
 | S6 CSV 导出 | 导出为浏览器 Blob 生成的 CSV（带 UTF-8 BOM 便于 Excel 识别），**非 .xlsx**；如确需 xlsx 再单独确认引入依赖 | S6 记录 |
 | S6 后端未动 | 本切片未新增/改后端接口，故**未重跑 `gen:api`**（`schema.d.ts` 不变）；`OperationLogOut`/系统三表类型仍缺，待对应前端切片一并重跑 | S6 记录 |
 | P2 附件 biz 可选 | 迁移 `0009_attachment_biz_nullable` 后 `attachment.biz_type/biz_id` 可空（P2 前端通用附件上传）；downgrade 会把 NULL 回填为 `GENERAL`/0 再恢复 NOT NULL（需人工留意） | P2 记录 |
+| P3 角色删除语义 | 删角色=软删 + **同时清空 user_role/role_permission 关联**（避免残留影响权限并集）；内置角色（is_builtin，如 ADMIN）禁删、禁停用、禁改 code（schema 无 code 字段天然保护）；状态机/单据无角色引用校验（角色先于业务用） | P3 记录 |
+| P3 分配角色语义 | `POST /users/{id}/roles` 与 `PUT /roles/{id}/permissions` 均为**全量替换**：提交完整列表，空数组即清空；前端弹窗必须回传当前全量选中，勿做增量 | P3 记录（`_sync_roles`/`replace_permissions`） |
+| P3 权限分组 | 权限无后端 group 字段，前端按 code 前缀分组展示（user:/role:/material:/purchase:/inventory:/forecast:/replenishment:/operation:/dict:/task:/attachment:）；新权限码须以`xxx:` 前缀命名否则落入 other 组 | P3 记录 |
+| P3 菜单权限 | 侧边栏与路由用 `meta.permission`（`xxx:view`）显隐/拦截；写操作按钮在页面内按 `xxx:manage/create/update` 细粒度控制；`/auth/me` 返回 permissions 为唯一依据（超管全量） | P3 记录 |
+| P3 用户列表 | `GET /users` 支持 `keyword`（username/real_name 模糊）；reset-password 用 `user:update` 权限（无独立权限码）；超管账号在前端不可停用 | P3 记录 |
+| P3 后端接口 | users/roles 全部补 `response_model` 后重跑 `gen:api`(schema.d.ts 含 UserOut/RoleOut/PermissionOut)；后续新增/改这类接口必须同步补 + 重跑 | P3 记录 |
+| P3 部署构建坑 | `docker compose build` 在 DSH 沙箱下因 buildx 写 `/root/.docker/buildx/activity` 被拒而**静默失败**（管道 `| tail` 掩盖非零退出），镜像未更新、容器跑旧代码；必须用 `DOCKER_BUILDKIT=0 docker build -f deploy/<X>.Dockerfile`（P2 已记录，P3 再次踩到；legacy builder 已验证可用） | P3 记录 |
 | P2 DocumentView 筛选扩展 | `DocFilter` 新增 `type: 'input'|'datetime-range'`（select 为默认、向后兼容）；datetime-range 在 `DocumentView.load()` 内拆为 `start_time/end_time`，命名空间与后端参数一致 | P2 记录 |
 | P2 http.ts 上传/下载 | `api.upload`（FormData + onUploadProgress）与 `api.download`（blob，读 Content-Disposition 还原文件名）；上传超时沿用 axios 20s 默认，大文件可能超时需要时可加 per-request timeout | P2 记录 |
 | P2 操作日志筛选 | 用户筛选为「用户ID」数字输入（后端仅支持 `user_id` 过滤，`/users` 无 response_model 不产出类型）；如需用户名下拉需先给 `/users` 补 response_model（P3 用户页一并做） | P2 记录 |
@@ -203,3 +217,4 @@
 | 2026-09-20 | S5 系统三表：只新增 `dict`/`scheduled_task_log`/`attachment` 三表与接口，不改任何库存/采购/预测表；附件只写本地磁盘 + 自身元数据 | 不涉及结存变更；`reconcile` 口径不变；真 PG 迁移 upgrade→downgrade -1→upgrade 可逆 |
 | 2026-09-20 | S6 概览 Dashboard：仅通过 `materials`/`warehouses`/`inventory`/`inventory/transactions`/`stock-alerts`/采购与库存各 list/`replenishment-suggestions` **只读**接口拉取并在浏览器聚合；未新增后端接口、不写任何表 | 不涉及结存变更；`reconcile` 口径不变；前端只读 API |
 | 2026-11-04 | P2 前端系统管理：操作日志只读 API、字典/定时任务/附件走各自系统接口；后端小修只改 `attachment` 两列可空（迁移 0009），**未触碰** `inventory`/`inventory_batch`/`inventory_transaction`/采购与预测表；前端只读 API + 附件上传下载（写自身附件目录） | 不涉及结存变更；`reconcile` 口径不变；迁移可逆（upgrade→downgrade -1→upgrade 验证过）；真库 `alembic current=0009` |
+| 2026-11-04 | P3 RBAC：后端只读写 `users/roles/permissions/user_role/role_permission` 五张权限表（角色 CRUD/软删、权限分配、重置密码）；前端仅通过 /users、/roles、/permissions API 操作；**未触碰** `inventory`/`inventory_batch`/`inventory_transaction`/采购/预测/系统表 | 不涉及结存变更；`reconcile` 口径不变；无新迁移（权限表为 M1-c 0001 已建）；真库 `alembic current=0009` 不变 |
