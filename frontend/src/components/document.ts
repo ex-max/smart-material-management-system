@@ -45,4 +45,6 @@ export interface DocConfig {
   canCreate?: boolean
   createPermission?: string
   createLabel?: string
+  /** 是否显示「导出 Excel」（默认 true；导出当前页） */
+  canExport?: boolean
 }

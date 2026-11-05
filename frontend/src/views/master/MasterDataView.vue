@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { Download, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -12,6 +12,7 @@ import {
   type Page,
 } from '@/api/master'
 import { useAuth } from '@/composables/useAuth'
+import { downloadXlsx, type XlsxCell } from '@/utils/xlsx'
 
 import {
   masterConfigs,
@@ -238,6 +239,43 @@ async function removeRow(row: Row) {
   await loadRows()
 }
 
+// ---------------- 导出 Excel（当前筛选结果，非仅当前页） ----------------
+const exporting = ref(false)
+
+async function handleExportXlsx(): Promise<void> {
+  const columns = config.value.columns.map((column) => ({
+    label: column.label,
+    width: column.width ? Math.max(8, Math.round(column.width / 8)) : undefined,
+  }))
+  const rows = filteredRows.value.map((row) =>
+    config.value.columns.map((column): XlsxCell => {
+      if (column.tag) {
+        return column.tag(row, ctx).label
+      }
+      if (column.formatter) {
+        return column.formatter(row, ctx)
+      }
+      return row[column.prop] ?? null
+    }),
+  )
+  if (rows.length === 0) {
+    ElMessage.warning('没有可导出的数据')
+    return
+  }
+  exporting.value = true
+  try {
+    const stamp = new Date().toISOString().slice(0, 10)
+    await downloadXlsx('erp-' + config.value.key + '-' + stamp + '.xlsx', { columns, rows }, {
+      sheetName: config.value.title,
+    })
+    ElMessage.success('Excel 已导出')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : 'Excel 导出失败')
+  } finally {
+    exporting.value = false
+  }
+}
+
 // ---------------- 初始化 / 切换实体 ----------------
 async function init() {
   resetFilters()
@@ -259,6 +297,14 @@ watch(() => route.meta.entity, init)
             <span class="master-desc">{{ config.description }}</span>
           </div>
           <div>
+            <el-button
+              :icon="Download"
+              :loading="exporting"
+              :disabled="filteredRows.length === 0"
+              @click="handleExportXlsx"
+            >
+              导出 Excel
+            </el-button>
             <el-button :icon="Refresh" @click="loadRows">刷新</el-button>
             <el-button v-if="canManage" type="primary" :icon="Plus" @click="openCreate">新增</el-button>
           </div>

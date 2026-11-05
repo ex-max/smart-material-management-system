@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Download, Refresh } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
 
 import EChart from '@/components/EChart.vue'
@@ -19,9 +20,23 @@ const {
   alertTypeData,
   alertTypeOption,
   exportCsv,
+  exportXlsx,
 } = useDashboard()
 
 const refreshedAt = ref('')
+const exporting = ref(false)
+
+async function handleExportXlsx(): Promise<void> {
+  exporting.value = true
+  try {
+    await exportXlsx()
+    ElMessage.success('Excel 已导出')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : 'Excel 导出失败')
+  } finally {
+    exporting.value = false
+  }
+}
 
 async function refresh(): Promise<void> {
   await load()
@@ -42,7 +57,8 @@ onMounted(refresh)
       </div>
       <div class="actions">
         <el-button :icon="Refresh" @click="refresh">刷新</el-button>
-        <el-button type="primary" :icon="Download" @click="exportCsv">导出 CSV</el-button>
+        <el-button :loading="exporting" :icon="Download" @click="handleExportXlsx">导出 Excel</el-button>
+        <el-button :icon="Download" @click="exportCsv">导出 CSV</el-button>
       </div>
     </div>
 

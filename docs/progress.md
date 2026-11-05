@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- **里程碑**：**P4 预测可视化完成**（后端预测区间 95% 落库 `y_lower/y_upper` + `GET /forecast/curves` 只读聚合；前端 `/forecast` 预测曲线页：实际消耗 / 预测 / 95% 阴影带 + 导出 PNG；演示批次 `FR-20261105-0002`（预测期 2026-09-20→10-03）；`make verify` 绿且 **0 skip**，后端 **98 passed**、ml **75 passed**）。
+- **里程碑**：**P5 报表导出（Excel）完成**（新增依赖 `xlsx`（SheetJS）+ `frontend/src/utils/xlsx.ts`：`{columns, rows}` → `.xlsx`，自动列宽 + 自动筛选 + 表头加粗/浅蓝底/冻结首行（无额外依赖的 OOXML 补丁），`downloadXlsxRows()` 兼容 `csv.ts` 调用方式；四处入口：概览 Dashboard、库存查询（结存/批次/流水当前页）、采购订单等全部单据列表（DocumentView 通用）、主数据六类（当前筛选全部）；`xlsx` 按需动态加载（独立 chunk，gzip 143KB）；`make verify` 绿且 **0 skip**，后端 **98 passed**、ml **75 passed**）。
 - **更新时间**：2026-11-05
 
 ## 已完成
@@ -83,13 +83,19 @@
   - **部署**：legacy builder 重建 `erp-api`/`erp-web`（`erp-postgres` 未动），smoke 5/5；实机 `GET /forecast/curves`（物资1×仓1）返回历史 2026-09-19 实际 7、未来 14 天含区间；`/forecast` SPA 200。
   - **未引入新依赖、未新增迁移**（`y_lower/y_upper` 列与 API 区间校验/`ForecastResultOut` 字段早已存在）。
 
+- [x] **P5 报表导出（Excel）（本会话垂直切片）**：在 CSV 基础上补 .xlsx。
+  - **工具**：新增 `frontend/src/utils/xlsx.ts`（通用 `downloadXlsx(filename, {columns, rows})` + 兼容 `csv.ts` 的 `downloadXlsxRows(filename, rows)`）；列宽按表头/内容自动估算（CJK 2 字符）、首行高 24、自动筛选；SheetJS 社区版**不写样式/冻结**，故以 `compression:false` 写出后做**无依赖 OOXML 补丁**（styles.xml 增加加粗字体/浅蓝填充/cellXfs，sheet1.xml 表头 `s="1"` + `pane` 冻结），重算 CRC32 重建 ZIP；`import('xlsx')` 动态加载，不增加首屏体积。
+  - **入口（4 处）**：概览 Dashboard（沿用聚合行，新增「导出 Excel」，保留 CSV）；库存查询（结存/批次/流水，导出当前页，数值列写 number）；采购订单等**全部单据列表**（`DocumentView` 通用「导出 Excel」当前页，`DocConfig.canExport` 默认 true）；主数据六类（导出当前筛选全部，按列 formatter/tag 输出）。
+  - **依赖**：新增 `xlsx@^0.18.5`（SheetJS，唯一新增）；`package.json` + `package-lock.json` 同步（Dockerfile `npm ci` 使用）。
+  - **验证**：Node 实测产物 `unzip -t` 通过、styles.xml fonts=2/fills=3/cellXfs=2、sheet1.xml 表头 `s="1"` + pane 冻结 + autoFilter；下载链路（DOM 桩）触发 `<a download>`、MIME 正确；`make verify` 绿 0 skip（后端 98、ml 75）、`npm run typecheck/lint/build` 通过；部署重建 `erp-web`（api/postgres/卷未动），smoke 5/5，宿主 nginx 站点（Host=gra.sukicloud.top）首页与新 `xlsx` chunk 均 200；`server-health` 前后 32/0/1 一致。
+
 ## 进行中
 
 - [ ] 无
 
 ## 下一步（只做这一条）
 
-**P5 Excel 导出**：把概览/列表页的 CSV 导出升级为 .xlsx（如确需新增前端依赖，先说明理由并记 CHANGELOG；不新增后端接口，沿用浏览器端生成）。
+**P6 供货价 / 日快照页**：给 M2-d 已落地的 `material_supplier_price`（供货价）与 `inventory_snapshot_daily`（日结存快照）补前端页面/菜单（按 `material:view`/`inventory:view` 等既有权限显隐）；后端接口已存在，先勘察是否需补 `response_model` 并重跑 `gen:api`。
 
 > 开工建议换新对话框，从 `AGENTS.md` → `docs/progress.md` 继续。
 
@@ -204,6 +210,12 @@
 | P4 曲线取批次 | 曲线接口按 (material, warehouse) 取 `id` 最大的 SUCCESS/PARTIAL 批次；同序列多批次只显示最新（旧批仍可经 `/forecast-runs/{id}/results` 查） | P4 记录 |
 | P4 导出图片 | 前端导出为 PNG（ECharts `getDataURL`，2x、白底），非 SVG/PDF；后端无导出接口 | P4 记录 |
 | P4 部署沙箱 | `server-health.sh` 的 `nginx -t` 在本会话沙箱下因写 `/www`（pid 文件）被拒 → 唯一 FAIL，改动前后完全一致，与本切片无关（未改 nginx） | P4 记录 |
+| P5 xlsx 样式补丁 | SheetJS CE 0.18.5 **不写单元格样式/冻结窗格**（Pro 能力）；`utils/xlsx.ts` 以 STORED ZIP + OOXML 补丁实现表头加粗/底色/冻结。补丁依赖 `styles.xml` 的 `fonts/fills/cellXfs` 结构与 `sheet1.xml` 的 `<sheetView/>`，升级 `xlsx` 或改输出结构时需回归 `unzip -t` + 表头 `s="1"`/`pane` | P5 记录 |
+| P5 导出范围 | 库存/单据列表导出**当前页**（服务端分页），主数据导出**当前筛选全部**（前端内存分页），概览导出汇总表；全量导出需后端分页接口配合，不在本切片 | P5 记录 |
+| P5 懒加载 | `import('xlsx')` 动态加载 → 独立 chunk `xlsx-*.js` 429KB（gzip 143KB），仅点击导出时请求；`vite build` 仍有 >500KB 警告（Element Plus/ECharts 既有），本切片未增加首屏 | P5 记录 |
+| P5 数字/文本口径 | 库存数量/结存、单据金额等尽量写 number（可求和）；日期/状态/供应商名等按页面 formatter 写文本；主数据安全库存/ROP 直接写原值 | P5 记录 |
+| P5 npm 依赖 | `xlsx@^0.18.5` 是 npm 上 SheetJS 最后版本（官方已迁 cdn.sheetjs.com）；仅浏览器端生成，不解析用户上传文件；npm audit 告警如出现需评估后再升级 | P5 记录 |
+| P5 公网自检限制 | 本机访问 WAN 地址受 NAT 回环影响（80 被路由器 302 到 userLogin.asp、443 TLS 握手被拒），无法用公网地址自测；已用 `--resolve gra.sukicloud.top:443:127.0.0.1` 验证宿主 nginx 站点与静态资源。浏览器下载为 `<a download>` 触发（无弹窗），需用户从公网/浏览器点一次确认 | P5 记录（待用户确认） |
 
 ## 对账状态（库存相关改动必填）
 
@@ -233,3 +245,4 @@
 | 2026-11-04 | P2 前端系统管理：操作日志只读 API、字典/定时任务/附件走各自系统接口；后端小修只改 `attachment` 两列可空（迁移 0009），**未触碰** `inventory`/`inventory_batch`/`inventory_transaction`/采购与预测表；前端只读 API + 附件上传下载（写自身附件目录） | 不涉及结存变更；`reconcile` 口径不变；迁移可逆（upgrade→downgrade -1→upgrade 验证过）；真库 `alembic current=0009` |
 | 2026-11-04 | P3 RBAC：后端只读写 `users/roles/permissions/user_role/role_permission` 五张权限表（角色 CRUD/软删、权限分配、重置密码）；前端仅通过 /users、/roles、/permissions API 操作；**未触碰** `inventory`/`inventory_batch`/`inventory_transaction`/采购/预测/系统表 | 不涉及结存变更；`reconcile` 口径不变；无新迁移（权限表为 M1-c 0001 已建）；真库 `alembic current=0009` 不变 |
 | 2026-11-05 | P4 预测可视化：`GET /forecast/curves` **只读**聚合 `inventory_transaction`（OUTBOUND+STOCKTAKE_LOSS）与 `forecast_result`；新批次 sync 只写 `forecast_*`/`replenishment_*`；**未触碰** `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；`reconcile` 口径不变；后端 98 passed；真库 `alembic current=0009` 不变 |
+| 2026-11-05 | P5 Excel 导出：纯前端 `utils/xlsx.ts`（SheetJS + Blob），四处导出仅读取页面已加载/已查询数据；**未新增后端接口、未新增迁移**；未触碰 `inventory`/`inventory_batch`/`inventory_transaction` | 不涉及结存变更；`reconcile` 口径不变；`make verify` 后端 98 / ml 75 passed；真库 `alembic current=0009` 不变 |

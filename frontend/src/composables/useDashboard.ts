@@ -17,6 +17,7 @@ import {
 } from '@/api/dashboard'
 import type { CsvCell } from '@/utils/csv'
 import { downloadCsv } from '@/utils/csv'
+import { downloadXlsxRows } from '@/utils/xlsx'
 import { ALERT_TYPE, DOC_STATUS } from '@/utils/status'
 
 interface Page<T> {
@@ -370,6 +371,11 @@ export function useDashboard() {
     downloadCsv('erp-dashboard-' + stamp + '.csv', csvRows())
   }
 
+  async function exportXlsx(): Promise<void> {
+    const stamp = new Date().toISOString().slice(0, 10)
+    await downloadXlsxRows('erp-dashboard-' + stamp + '.xlsx', csvRows(), { sheetName: '概览' })
+  }
+
   return {
     data,
     loading,
@@ -385,5 +391,6 @@ export function useDashboard() {
     alertTypeData,
     alertTypeOption,
     exportCsv,
+    exportXlsx,
   }
 }

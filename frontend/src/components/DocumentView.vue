@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { Download, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, reactive, ref } from 'vue'
 
 import { useAuth } from '@/composables/useAuth'
 import type { DocAction, DocColumn, DocConfig } from '@/components/document'
+import { downloadXlsx, type XlsxCell, type XlsxTable } from '@/utils/xlsx'
 
 const props = defineProps<{ config: DocConfig }>()
 const emit = defineEmits<{ (e: 'create'): void }>()
@@ -93,6 +94,47 @@ function openDetail(row: any) {
 
 defineExpose({ reload: load, openDetail })
 
+// ---------------- 导出 Excel（当前页） ----------------
+const exporting = ref(false)
+
+function buildExportTable(): XlsxTable {
+  const columns = props.config.columns.map((column) => ({
+    label: column.label,
+    width: column.width ? Math.max(8, Math.round(column.width / 8)) : undefined,
+  }))
+  const exportRows = rows.value.map((row) =>
+    props.config.columns.map((column): XlsxCell => {
+      if (column.tag) {
+        return column.tag(row).label
+      }
+      if (column.formatter) {
+        return column.formatter(row)
+      }
+      return row[column.prop] ?? null
+    }),
+  )
+  return { columns, rows: exportRows }
+}
+
+async function exportCurrentPage(): Promise<void> {
+  if (rows.value.length === 0) {
+    ElMessage.warning('当前页没有可导出的数据')
+    return
+  }
+  exporting.value = true
+  try {
+    const stamp = new Date().toISOString().slice(0, 10)
+    await downloadXlsx('erp-' + props.config.title + '-' + stamp + '.xlsx', buildExportTable(), {
+      sheetName: props.config.title,
+    })
+    ElMessage.success('Excel 已导出')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : 'Excel 导出失败')
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -106,6 +148,15 @@ onMounted(load)
             <span class="doc-desc">{{ config.description }}</span>
           </div>
           <div>
+            <el-button
+              v-if="config.canExport !== false"
+              :icon="Download"
+              :loading="exporting"
+              :disabled="rows.length === 0"
+              @click="exportCurrentPage"
+            >
+              导出 Excel
+            </el-button>
             <el-button :icon="Refresh" @click="load">刷新</el-button>
             <el-button v-if="canCreate" type="primary" :icon="Plus" @click="emit('create')">
               {{ config.createLabel || '新建' }}

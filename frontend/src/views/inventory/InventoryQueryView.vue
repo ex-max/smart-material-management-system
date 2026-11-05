@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Search } from '@element-plus/icons-vue'
+import { Download, Search } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { computed, onMounted, reactive, ref } from 'vue'
 
 import {
@@ -15,6 +16,7 @@ import {
 import { useMasterOptions } from '@/composables/useMasterOptions'
 import { fmtDate, fmtDateTime, fmtNum } from '@/utils/format'
 import { TXN_TYPE } from '@/utils/status'
+import { downloadXlsx, type XlsxCell, type XlsxTable } from '@/utils/xlsx'
 
 type TabName = 'inventory' | 'batches' | 'txns'
 
@@ -189,6 +191,113 @@ onMounted(() => {
   void loadBatches()
   void loadTransactions()
 })
+
+// ---------------- 导出 Excel ----------------
+const exporting = ref(false)
+const TAB_TITLES: Record<TabName, string> = {
+  inventory: '库存结存',
+  batches: '库存批次',
+  txns: '库存流水',
+}
+
+const currentRows = computed<unknown[]>(() => {
+  if (activeTab.value === 'inventory') {
+    return inventoryTab.rows
+  }
+  if (activeTab.value === 'batches') {
+    return batchTab.rows
+  }
+  return txnTab.rows
+})
+
+function numCell(value: unknown): number | null {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function buildExportTable(): XlsxTable {
+  if (activeTab.value === 'batches') {
+    return {
+      columns: [
+        { label: '物资', width: 28 },
+        { label: '仓库', width: 20 },
+        { label: '批次号', width: 20 },
+        { label: '数量', width: 12 },
+        { label: '锁定量', width: 10 },
+        { label: '有效期', width: 14 },
+        { label: '状态', width: 10 },
+      ],
+      rows: batchTab.rows.map((row): XlsxCell[] => [
+        nameOf('material', row.material_id),
+        nameOf('warehouse', row.warehouse_id),
+        row.batch_no,
+        numCell(row.quantity),
+        numCell(row.locked_qty),
+        fmtDate(row.expiry_date),
+        row.status,
+      ]),
+    }
+  }
+  if (activeTab.value === 'txns') {
+    return {
+      columns: [
+        { label: '发生时间', width: 20 },
+        { label: '物资', width: 28 },
+        { label: '仓库', width: 20 },
+        { label: '类型', width: 14 },
+        { label: '数量', width: 12 },
+        { label: '来源单号', width: 20 },
+        { label: '结存后', width: 12 },
+      ],
+      rows: txnTab.rows.map((row): XlsxCell[] => [
+        fmtDateTime(row.occurred_at),
+        nameOf('material', row.material_id),
+        nameOf('warehouse', row.warehouse_id),
+        TXN_TYPE[row.txn_type] || row.txn_type,
+        numCell(row.quantity),
+        row.source_no,
+        numCell(row.balance_after),
+      ]),
+    }
+  }
+  return {
+    columns: [
+      { label: '物资', width: 28 },
+      { label: '仓库', width: 20 },
+      { label: '结存数量', width: 12 },
+      { label: '锁定量', width: 10 },
+      { label: '版本', width: 8 },
+      { label: '最近变动', width: 20 },
+    ],
+    rows: inventoryTab.rows.map((row): XlsxCell[] => [
+      nameOf('material', row.material_id),
+      nameOf('warehouse', row.warehouse_id),
+      numCell(row.quantity),
+      numCell(row.locked_qty),
+      row.version,
+      fmtDateTime(row.last_txn_at),
+    ]),
+  }
+}
+
+async function handleExportXlsx(): Promise<void> {
+  if (currentRows.value.length === 0) {
+    ElMessage.warning('当前页没有可导出的数据')
+    return
+  }
+  exporting.value = true
+  try {
+    const stamp = new Date().toISOString().slice(0, 10)
+    await downloadXlsx('erp-inventory-' + activeTab.value + '-' + stamp + '.xlsx', buildExportTable(), {
+      sheetName: TAB_TITLES[activeTab.value],
+    })
+    ElMessage.success('Excel 已导出')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : 'Excel 导出失败')
+  } finally {
+    exporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -198,6 +307,15 @@ onMounted(() => {
         <div class="query-header">
           <span class="query-title">库存查询</span>
           <span class="query-desc">结存 / 批次 / 流水，库存余额由流水推导</span>
+          <el-button
+            class="export-btn"
+            :icon="Download"
+            :loading="exporting"
+            :disabled="currentRows.length === 0"
+            @click="handleExportXlsx"
+          >
+            导出 Excel
+          </el-button>
           <el-button class="reconcile-btn" type="primary" :loading="reconciling" @click="handleReconcile">
             库存对账
           </el-button>
@@ -382,8 +500,11 @@ onMounted(() => {
   color: #909399;
   font-size: 13px;
 }
-.reconcile-btn {
+.export-btn {
   margin-left: auto;
+}
+.reconcile-btn {
+  margin-left: 8px;
 }
 .pager {
   margin-top: 16px;

@@ -3,6 +3,18 @@
 格式：`## YYYY-MM-DD · <模块>` + 改动 / 原因 / 验证 / 回滚
 （每个工作会话收尾时追加一条）
 
+## 2026-11-05 · P5 报表导出（Excel / xlsx）
+
+- **改动**：
+  - 新增 `frontend/src/utils/xlsx.ts`：通用 `downloadXlsx(filename, {columns, rows})` 与兼容 `csv.ts` 调用方式的 `downloadXlsxRows(filename, rows)`；列宽按表头/内容自动估算（CJK 2 字符）、表头行高 24、自动筛选。SheetJS 社区版不写单元格样式与冻结窗格，故以 `compression:false` 写出后做**无新增依赖的 OOXML 补丁**（`styles.xml` 追加加粗字体/浅蓝填充/表头 `cellXfs`；`sheet1.xml` 表头 `s="1"` + `pane` 冻结），重算 CRC32 重建 ZIP；`import('xlsx')` 动态加载（独立 chunk，不增加首屏）。
+  - 四处入口：概览 Dashboard（`useDashboard.exportXlsx`，沿用聚合行，保留 CSV）；库存查询（结存/批次/流水当前页，数量/结存写 number）；采购订单等**全部单据列表**（`DocumentView` 通用「导出 Excel」，`DocConfig.canExport` 默认 true，按列 formatter/tag 输出）；主数据六类（`MasterDataView` 导出当前筛选全部）。
+  - 依赖：`frontend/package.json` + `package-lock.json` 新增 `xlsx@^0.18.5`。
+- **原因**：`docs/progress.md` 的「下一步」P5 —— 方案 🟡 项「报表导出（Excel）」此前只有 CSV（S6）。
+- **依赖理由**：`xlsx`（SheetJS）是浏览器端生成 OOXML 的成熟方案，纯前端、无需后端导出接口、不写业务表；只加这一个包，未引入 `exceljs`/`xlsx-js-style` 等（其样式能力由本切片无依赖补丁补齐）。
+- **验证**：`make verify` **绿且 0 skip**（后端 **98 passed**、ml **75 passed**、前端 lint）；`npm run typecheck` / `lint` / `build` 通过；Node 实测产物 `unzip -t` 通过、`styles.xml` fonts=2/fills=3/cellXfs=2、`sheet1.xml` 表头 `s="1"` + pane 冻结 + autoFilter；DOM 桩验证下载链路触发 `<a download>` 且 MIME 正确。部署（legacy builder 重建 `erp-web`，`erp-api`/`erp-postgres`/卷未动）：smoke **5/5**；宿主 nginx 站点（`--resolve ...:443:127.0.0.1`，Host=gra.sukicloud.top）首页 200，新 `/assets/xlsx-D_0l8YDs.js`（429KB）与 `xlsx-BE-cGsUd.js`（5.4KB）均 200；`server-health.sh -q` 前后 **32/0/1 完全一致**（唯一 FAIL 为沙箱下 `nginx -t` 写 pid 被拒，既有问题）。
+- **回滚**：`git revert <本次提交>`（无迁移、无后端改动）；镜像回滚 `docker tag erp-web:rollback-20261105-p5 erp-web:local` + `cd deploy && docker compose up -d --no-build --force-recreate web`（详见 `/root/dsh/CHANGELOG-ops.md`）。
+- **备注**：导出为「当前页/当前筛选」语义，非全量；工作表名按 Excel 规则截断 31 字符；`xlsx` 为懒加载 chunk（gzip 143KB）。**公网 WAN 回环被路由器登录页接管（80→userLogin.asp、443 TLS 拒绝），本机无法用公网地址自测；已用 Host 解析验证宿主 nginx，浏览器下载需用户从公网点一次确认。服务器改动已记 `/root/dsh/CHANGELOG-ops.md`**。
+
 ## 2026-11-05 · P4 预测可视化（区间落库 + 预测曲线页）
 
 - **改动**：
